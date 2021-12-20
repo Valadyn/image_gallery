@@ -284,6 +284,7 @@ class _MainPageState extends State<MyHomePage> {
 
 
 
+  final Stream<QuerySnapshot> _usersStream = FirebaseFirestore.instance.collection('images').snapshots();
 
   @override
   Widget build(BuildContext context) {
@@ -322,7 +323,76 @@ class _MainPageState extends State<MyHomePage> {
           ]
         ),
 
-        body: _isGridView ?
+        body: StreamBuilder<QuerySnapshot>(
+          stream: _usersStream,
+          builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+            if (snapshot.hasError) {
+              return Text('Something went wrong');
+            }
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Text("Loading");
+            }
+
+            if (_isGridView){
+              return GridView(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: _gridViewCount,
+                ),
+
+                // Provide a builder function. This is where the magic happens.
+                // Convert each item into a widget based on the type of item it is.
+                children: snapshot.data!.docs.map((DocumentSnapshot document) {
+                  Map<String, dynamic> data = document.data()! as Map<String, dynamic>;
+                  return Container(
+                      margin: const EdgeInsets.all(5),
+                      color: Theme.of(context).colorScheme.primary,
+                      child: Stack(
+                          children: [
+                            Image(
+                              image: NetworkImage(
+                                  data['imageURL']
+                              ),
+                            ),
+                            Positioned(
+                              top: -5,
+                              right: -5,
+                              child: IconButton(
+                                tooltip: 'More',
+                                icon: const Icon(Icons.more_vert_outlined),
+                                onPressed: () {},
+                              ),
+                            ),
+                            Positioned(
+                              bottom: -5,
+                              right: -5,
+                              child: IconButton(
+                                tooltip: 'Favourite',
+                                icon: const Icon(Icons.favorite_border),
+                                onPressed: () {},
+                              ),
+                            ),
+                          ]
+                      )
+                  );
+                }).toList(),
+              );
+            } else {
+              return ListView(
+                children: snapshot.data!.docs.map((DocumentSnapshot document) {
+                  Map<String, dynamic> data = document.data()! as Map<String, dynamic>;
+                  return ListTile(
+                    title: Text(data['name']),
+                    subtitle: Text(data['imageName']),
+                  );
+                }).toList(),
+              );
+            }
+          },
+        ),
+
+        /*
+        _isGridView ?
         GridView.builder(
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: _gridViewCount,
@@ -381,6 +451,8 @@ class _MainPageState extends State<MyHomePage> {
             );
           },
         ),
+
+         */
 
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
         floatingActionButton: FloatingActionButton(
