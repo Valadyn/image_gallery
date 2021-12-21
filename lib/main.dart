@@ -538,7 +538,7 @@ class _AddImagePageState extends State<AddImagePage> {
   TextEditingController idEditingController = TextEditingController();
 
 
-  var newImage = '';
+  var newImage;
 
 
   CollectionReference images = FirebaseFirestore.instance.collection('images');
@@ -577,16 +577,16 @@ class _AddImagePageState extends State<AddImagePage> {
     File file = File(image!.path);
 
     setState(() {
-      newImage = '';
+      newImage = file;
     });
 
-    print(file.uri);
-    print(file.uri);
-    print(file.uri);
-    print(file.uri);
-    print(file.uri);
-
     return file;
+  }
+
+  Future uploadImageTEST(String name) async {
+    await firebase_storage.FirebaseStorage.instance
+        .ref('images/$name.png')
+        .putFile(newImage);
   }
 
   Future<String> downloadImageURL(String name) async {
@@ -701,7 +701,7 @@ class _AddImagePageState extends State<AddImagePage> {
                                 height: 40,
                                 color: Colors.amber,
                                 child: Image.network(
-                                  newImage,
+                                  '',
                                   fit: BoxFit.cover,
                                 ),
                               ),
