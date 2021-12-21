@@ -311,14 +311,7 @@ class _MainPageState extends State<MyHomePage> {
             IconButton(
               icon: const Icon(Icons.lock_outline),
               tooltip: 'Lock',
-              onPressed: () async {await addImage(1, 'second', 'hello');},
-            ),
-            IconButton(
-              icon: const Icon(Icons.menu),
-              tooltip: 'Menu',
-              onPressed: () async {
-                _onPressed();
-              },
+              onPressed: () {},
             ),
           ]
         ),
@@ -349,9 +342,11 @@ class _MainPageState extends State<MyHomePage> {
                       color: Theme.of(context).colorScheme.primary,
                       child: Stack(
                           children: [
-                            Image(
-                              image: NetworkImage(
-                                  data['imageURL']
+                            Container (
+                              constraints: BoxConstraints.expand(),
+                              child: Image.network(
+                                data['imageURL'],
+                                fit: BoxFit.cover,
                               ),
                             ),
                             Positioned(
@@ -478,45 +473,51 @@ class _MainPageState extends State<MyHomePage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: <Widget>[
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      padding: EdgeInsets.only(bottom: 5),
-                      constraints: BoxConstraints(),
-                      color: Colors.white,
-                      tooltip: 'Home',
-                      icon: const Icon(Icons.home_outlined),
-                      onPressed: () {},
-                    ),
-                    const Text (
-                      'HOME',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                  ]
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 5),
+                  child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          padding: EdgeInsets.only(bottom: 5),
+                          constraints: BoxConstraints(),
+                          color: Colors.white,
+                          tooltip: 'Home',
+                          icon: const Icon(Icons.home_outlined),
+                          onPressed: () {},
+                        ),
+                        const Text (
+                          'HOME',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      ]
+                  ),
                 ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      padding: EdgeInsets.only(bottom: 5),
-                      constraints: BoxConstraints(),
-                      color: Colors.white,
-                      tooltip: 'Shared',
-                      icon: const Icon(Icons.people_outlined),
-                      onPressed: () {},
-                    ),
-                    const Text (
-                      'SHARED',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                  ]
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 5),
+                  child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          padding: EdgeInsets.only(bottom: 5),
+                          constraints: BoxConstraints(),
+                          color: Colors.white,
+                          tooltip: 'Shared',
+                          icon: const Icon(Icons.people_outlined),
+                          onPressed: () {},
+                        ),
+                        const Text (
+                          'SHARED',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      ]
+                  ),
                 ),
               ],
             ),
@@ -536,6 +537,8 @@ class _AddImagePageState extends State<AddImagePage> {
   TextEditingController imageNameEditingController = TextEditingController();
   TextEditingController idEditingController = TextEditingController();
 
+
+  var newImage = '';
 
 
   CollectionReference images = FirebaseFirestore.instance.collection('images');
@@ -567,6 +570,25 @@ class _AddImagePageState extends State<AddImagePage> {
         .putFile(file);
   }
 
+  Future pickImageTEST() async {
+    final ImagePicker _picker = ImagePicker();
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+
+    File file = File(image!.path);
+
+    setState(() {
+      newImage = '';
+    });
+
+    print(file.uri);
+    print(file.uri);
+    print(file.uri);
+    print(file.uri);
+    print(file.uri);
+
+    return file;
+  }
+
   Future<String> downloadImageURL(String name) async {
     String downloadURL = await firebase_storage.FirebaseStorage.instance
         .ref('images/$name.png')
@@ -577,6 +599,7 @@ class _AddImagePageState extends State<AddImagePage> {
     return downloadURL.toString();
   }
 
+  // Dylan you should research this method more
   Future<void> addImage(id, name, imageName) async {
     await pickImage(imageName);
     String imageURL = await downloadImageURL(imageName);
@@ -603,94 +626,109 @@ class _AddImagePageState extends State<AddImagePage> {
       home: Scaffold(
         appBar: AppBar(
           leading: IconButton(
-            icon: const Icon(Icons.menu),
-            tooltip: 'Menu',
-            onPressed: () {},
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Back',
+            onPressed: () {
+              Navigator.pop(context);
+            },
           ),
           title: Text(widget.title),
-          actions: <Widget>[
-            IconButton(
-              icon: const Icon(Icons.grid_view_outlined),
-              tooltip: 'Grid Display',
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: const Icon(Icons.sort_outlined),
-              tooltip: 'List Display',
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: const Icon(Icons.lock_outline),
-              tooltip: 'Lock',
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: const Icon(Icons.menu),
-              tooltip: 'Menu',
-              onPressed: () {},
-            ),
-          ]
         ),
 
         body: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             Form(
               key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  TextFormField(
-                    controller: nameEditingController,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter your email',
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: TextFormField(
+                        controller: nameEditingController,
+                        decoration: const InputDecoration(
+                          hintText: 'Enter name',
+                        ),
+                        validator: (String? value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter some text';
+                          }
+                          return null;
+                        },
+                      ),
                     ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter some text';
-                      }
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: imageNameEditingController,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter your email',
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: TextFormField(
+                        controller: imageNameEditingController,
+                        decoration: const InputDecoration(
+                          hintText: 'Enter image name',
+                        ),
+                        validator: (String? value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter some text';
+                          }
+                          return null;
+                        },
+                      ),
                     ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter some text';
-                      }
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: idEditingController,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter your email',
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: TextFormField(
+                        controller: idEditingController,
+                        decoration: const InputDecoration(
+                          hintText: 'Enter id',
+                        ),
+                        validator: (String? value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter some text';
+                          }
+                          return null;
+                        },
+                      ),
                     ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter some text';
-                      }
-                      return null;
-                    },
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        // Validate will return true if the form is valid, or false if
-                        // the form is invalid.
-                        if (_formKey.currentState!.validate()) {
-                          // Process data.
-                          int test = int.parse(idEditingController.text);
-                          await addImage(test, nameEditingController.text, imageNameEditingController.text);
-                        }
-                      },
-                      child: const Text('Submit'),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10.0),
+                      child: ElevatedButton(
+                        onPressed: () async {pickImageTEST();},
+                        child: Row(
+                            children: [
+                              Container (
+                                width: 40,
+                                height: 40,
+                                color: Colors.amber,
+                                child: Image.network(
+                                  newImage,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              const Spacer(),
+                              const Text('Select Image'),
+                            ]
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10.0),
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          // Validate will return true if the form is valid, or false if
+                          // the form is invalid.
+                          if (_formKey.currentState!.validate()) {
+                            // Process data.
+                            int test = int.parse(idEditingController.text);
+                            await addImage(test, nameEditingController.text, imageNameEditingController.text);
+                            Navigator.pop(context);
+                          }
+                        },
+                        child: const Text('Submit'),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             )
           ],
