@@ -48,10 +48,6 @@ class MyApp extends StatelessWidget {
 
 
 
-
-
-
-
 class AuthGate extends StatelessWidget { // https://firebase.flutter.dev/docs/ui/auth
   const AuthGate({Key? key}) : super(key: key);
 
@@ -79,37 +75,6 @@ class AuthGate extends StatelessWidget { // https://firebase.flutter.dev/docs/ui
 Future _signOut() async {
   await FirebaseAuth.instance.signOut();
 }
-
-
-
-
-
-
-
-
-Future _pickImage() async {
-  final ImagePicker _picker = ImagePicker();
-  final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-
-  File file = File(image!.path);
-
-  await firebase_storage.FirebaseStorage.instance
-      .ref('images/file-to-upload.png')
-      .putFile(file);
-}
-
-/*
-Future<void> downloadURLExample() async {
-  String downloadURL = await firebase_storage.FirebaseStorage.instance
-      .ref('images/file-to-upload.png')
-      .getDownloadURL();
-
-  // Within your widgets:
-  // Image.network(downloadURL);
-}
-*/
-
-
 
 
 
@@ -154,8 +119,13 @@ class AddImagePage extends StatefulWidget {
 
 
 class _MainPageState extends State<MyHomePage> {
+
+  final Stream<QuerySnapshot> _usersStream = FirebaseFirestore.instance.collection('images').snapshots();
+
   bool _isGridView = true;
   int _gridViewCount = 3;
+
+
 
   void _gridViewOff() {
     setState(() {
@@ -184,107 +154,17 @@ class _MainPageState extends State<MyHomePage> {
 
 
 
-  Future<String> downloadURLExample() async {
-    String downloadURL = await firebase_storage.FirebaseStorage.instance
-        .ref('images/file-to-upload.png')
-        .getDownloadURL();
-
-    // Within your widgets:
-    // Image.network(downloadURL);
-    return downloadURL.toString();
-  }
-
-  List<ImageObject> items = [];
-
-  _onPressed() {
-    items.clear();
-    FirebaseFirestore.instance.collection('images').get().then((querySnapshot) {
-      querySnapshot.docs.forEach((result) {
-        ImageObject item = ImageObject(result.data()['id'], result.data()['name'], result.data()['imageName'], result.data()['imageURL']);
-        items.add(item);
-        print(item.id);
-        print(item.name);
-        print(item.imageName);
-        print(item.imageURL);
-      });
-    });
-  }
-
-
-
-
-
-
-
-
-
   CollectionReference images = FirebaseFirestore.instance.collection('images');
 
-  Future<void> uploadImage(String name) async {
-    Directory appDocDir = await getApplicationDocumentsDirectory();
-    String filePath = '${appDocDir.absolute}/$name.png';
-    // ...
-    // e.g. await uploadFile(filePath);
-    File file = File(filePath);
-
-    try {
-      await firebase_storage.FirebaseStorage.instance
-          .ref('images/$name.png')
-          .putFile(file);
-    } catch (e) {
-      // e.g, e.code == 'canceled'
-    }
-  }
-
-  Future pickImage(String name) async {
-    final ImagePicker _picker = ImagePicker();
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-
-    File file = File(image!.path);
-
-    await firebase_storage.FirebaseStorage.instance
-        .ref('images/$name.png')
-        .putFile(file);
-  }
-
-  Future<String> downloadImageURL(String name) async {
-    String downloadURL = await firebase_storage.FirebaseStorage.instance
-        .ref('images/$name.png')
-        .getDownloadURL();
-
-    // Within your widgets:
-    // Image.network(downloadURL);
-    return downloadURL.toString();
-  }
-
-  Future<void> addImage(id, name, imageName) async {
-    await pickImage(imageName);
-    String imageURL = await downloadImageURL(imageName);
-    bool favorited = false;
-
-    // Call the user's CollectionReference to add a new user
+  Future<void> favouriteImage(var docId, bool currentFav) {
     return images
-        .add({
-      'id': id, // John Doe
-      'name': name, // Stokes and Sons
-      'imageName': imageName,
-      'imageURL': imageURL,
-      'favorited': favorited // 42
-    })
-        .then((value) => print("image Added"))
-        .catchError((error) => print("Failed to add image: $error"));
+        .doc(docId)
+        .update({'favorited': !currentFav})
+        .then((value) => print("User Updated"))
+        .catchError((error) => print("Failed to update user: $error"));
   }
 
 
-
-
-
-
-
-
-
-
-  final Stream<QuerySnapshot> _usersStream = FirebaseFirestore.instance.collection('images').snapshots();
 
   @override
   Widget build(BuildContext context) {
@@ -316,15 +196,17 @@ class _MainPageState extends State<MyHomePage> {
           ]
         ),
 
+
+
         body: StreamBuilder<QuerySnapshot>(
           stream: _usersStream,
           builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
             if (snapshot.hasError) {
-              return Text('Something went wrong');
+              return const Text('Something went wrong');
             }
 
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Text("Loading");
+              return const Text("Loading");
             }
 
             if (_isGridView){
@@ -333,10 +215,11 @@ class _MainPageState extends State<MyHomePage> {
                   crossAxisCount: _gridViewCount,
                 ),
 
-                // Provide a builder function. This is where the magic happens.
-                // Convert each item into a widget based on the type of item it is.
                 children: snapshot.data!.docs.map((DocumentSnapshot document) {
                   Map<String, dynamic> data = document.data()! as Map<String, dynamic>;
+                  print(document.reference.id);
+                  var docId = document.reference.id;
+                  print(data['favorited']);
                   return Container(
                       margin: const EdgeInsets.all(5),
                       color: Theme.of(context).colorScheme.primary,
@@ -363,8 +246,10 @@ class _MainPageState extends State<MyHomePage> {
                               right: -5,
                               child: IconButton(
                                 tooltip: 'Favourite',
-                                icon: const Icon(Icons.favorite_border),
-                                onPressed: () {},
+                                icon: data['favorited'] ?
+                                Icon(Icons.favorite):
+                                Icon(Icons.favorite_border),
+                                onPressed: () async {favouriteImage(docId, data['favorited']);},
                               ),
                             ),
                           ]
@@ -378,7 +263,7 @@ class _MainPageState extends State<MyHomePage> {
                   Map<String, dynamic> data = document.data()! as Map<String, dynamic>;
                   return ListTile(
                     title: Text(data['name']),
-                    subtitle: Text(data['imageName']),
+                    subtitle: Text(data['user']),
                   );
                 }).toList(),
               );
@@ -386,68 +271,7 @@ class _MainPageState extends State<MyHomePage> {
           },
         ),
 
-        /*
-        _isGridView ?
-        GridView.builder(
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: _gridViewCount,
-          ),
 
-          itemCount: items.length,
-          // Provide a builder function. This is where the magic happens.
-          // Convert each item into a widget based on the type of item it is.
-          itemBuilder: (context, index) {
-            final item = items[index];
-
-            return Container(
-              margin: const EdgeInsets.all(5),
-              color: Theme.of(context).colorScheme.primary,
-              child: Stack(
-                children: [
-                  Image(
-                    image: NetworkImage(
-                      item.imageURL
-                    ),
-                  ),
-                  Positioned(
-                    top: -5,
-                    right: -5,
-                    child: IconButton(
-                      tooltip: 'More',
-                      icon: const Icon(Icons.more_vert_outlined),
-                      onPressed: () {},
-                    ),
-                  ),
-                  Positioned(
-                    bottom: -5,
-                    right: -5,
-                    child: IconButton(
-                      tooltip: 'Favourite',
-                      icon: const Icon(Icons.favorite_border),
-                      onPressed: () {},
-                    ),
-                  ),
-                ]
-              )
-            );
-          },
-        ) :
-        ListView.builder(
-          // Let the ListView know how many items it needs to build.
-          itemCount: items.length,
-          // Provide a builder function. This is where the magic happens.
-          // Convert each item into a widget based on the type of item it is.
-          itemBuilder: (context, index) {
-            final item = items[index];
-
-            return ListTile(
-              title: Text(item.name.toString()),
-              subtitle: Text(item.name.toString()),
-            );
-          },
-        ),
-
-         */
 
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
         floatingActionButton: FloatingActionButton(
@@ -461,6 +285,8 @@ class _MainPageState extends State<MyHomePage> {
           child: const Icon(Icons.add_a_photo_outlined),
         ),
 
+
+
         bottomNavigationBar: BottomAppBar(
           shape: const CircularNotchedRectangle(),
           color: Colors.blue,
@@ -473,6 +299,7 @@ class _MainPageState extends State<MyHomePage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: <Widget>[
+                const Spacer(),
                 Padding(
                   padding: EdgeInsets.symmetric(vertical: 5),
                   child: Column(
@@ -496,6 +323,9 @@ class _MainPageState extends State<MyHomePage> {
                       ]
                   ),
                 ),
+                const Spacer(),
+                const Spacer(),
+                const Spacer(),
                 Padding(
                   padding: EdgeInsets.symmetric(vertical: 5),
                   child: Column(
@@ -519,6 +349,7 @@ class _MainPageState extends State<MyHomePage> {
                       ]
                   ),
                 ),
+                const Spacer(),
               ],
             ),
           ),
@@ -532,45 +363,18 @@ class _MainPageState extends State<MyHomePage> {
 
 class _AddImagePageState extends State<AddImagePage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final FirebaseAuth auth = FirebaseAuth.instance;
+
+  CollectionReference images = FirebaseFirestore.instance.collection('images');
 
   TextEditingController nameEditingController = TextEditingController();
-  TextEditingController imageNameEditingController = TextEditingController();
   TextEditingController idEditingController = TextEditingController();
-
 
   var newImage;
 
 
-  CollectionReference images = FirebaseFirestore.instance.collection('images');
 
-  Future<void> uploadImage(String name) async {
-    Directory appDocDir = await getApplicationDocumentsDirectory();
-    String filePath = '${appDocDir.absolute}/$name.png';
-    // ...
-    // e.g. await uploadFile(filePath);
-    File file = File(filePath);
-
-    try {
-      await firebase_storage.FirebaseStorage.instance
-          .ref('images/$name.png')
-          .putFile(file);
-    } catch (e) {
-      // e.g, e.code == 'canceled'
-    }
-  }
-
-  Future pickImage(String name) async {
-    final ImagePicker _picker = ImagePicker();
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-
-    File file = File(image!.path);
-
-    await firebase_storage.FirebaseStorage.instance
-        .ref('images/$name.png')
-        .putFile(file);
-  }
-
-  Future pickImageTEST() async {
+  Future pickImage() async {
     final ImagePicker _picker = ImagePicker();
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
 
@@ -579,11 +383,9 @@ class _AddImagePageState extends State<AddImagePage> {
     setState(() {
       newImage = file;
     });
-
-    return file;
   }
 
-  Future uploadImageTEST(String name) async {
+  Future uploadImage(String name) async {
     await firebase_storage.FirebaseStorage.instance
         .ref('images/$name.png')
         .putFile(newImage);
@@ -600,22 +402,34 @@ class _AddImagePageState extends State<AddImagePage> {
   }
 
   // Dylan you should research this method more
-  Future<void> addImage(id, name, imageName) async {
-    await pickImage(imageName);
-    String imageURL = await downloadImageURL(imageName);
+  Future<void> addImage(id, name) async {
+    await uploadImage(name);
+    String imageURL = await downloadImageURL(name);
     bool favorited = false;
+
+    final User user = auth.currentUser as User;
+    final uid = user.uid;
+
+    String currentUser = uid;
 
     // Call the user's CollectionReference to add a new user
     return images
-        .add({
-      'id': id, // John Doe
-      'name': name, // Stokes and Sons
-      'imageName': imageName,
-      'imageURL': imageURL,
-      'favorited': favorited // 42
-    })
-        .then((value) => print("image Added"))
-        .catchError((error) => print("Failed to add image: $error"));
+      .add({
+        'id': id, // John Doe
+        'name': name, // Stokes and Sons
+        'imageURL': imageURL,
+        'user': currentUser,
+        'favorited': favorited // 42
+      })
+      .then((value) => print("image Added"))
+      .catchError((error) => print("Failed to add image: $error"));
+  }
+
+
+
+  exitPage() {
+    newImage.clear();
+    Navigator.pop(context);
   }
 
 
@@ -663,21 +477,6 @@ class _AddImagePageState extends State<AddImagePage> {
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       child: TextFormField(
-                        controller: imageNameEditingController,
-                        decoration: const InputDecoration(
-                          hintText: 'Enter image name',
-                        ),
-                        validator: (String? value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter some text';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: TextFormField(
                         controller: idEditingController,
                         decoration: const InputDecoration(
                           hintText: 'Enter id',
@@ -693,15 +492,17 @@ class _AddImagePageState extends State<AddImagePage> {
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10.0),
                       child: ElevatedButton(
-                        onPressed: () async {pickImageTEST();},
+                        onPressed: () async {pickImage();},
                         child: Row(
                             children: [
                               Container (
-                                width: 40,
-                                height: 40,
+                                width: 55,
+                                height: 55,
                                 color: Colors.amber,
-                                child: Image.network(
-                                  '',
+                                child: newImage == null ?
+                                Text('No Image Selected') :
+                                Image.file(
+                                  newImage,
                                   fit: BoxFit.cover,
                                 ),
                               ),
@@ -719,8 +520,8 @@ class _AddImagePageState extends State<AddImagePage> {
                           // the form is invalid.
                           if (_formKey.currentState!.validate()) {
                             // Process data.
-                            int test = int.parse(idEditingController.text);
-                            await addImage(test, nameEditingController.text, imageNameEditingController.text);
+                            int tempInt = int.parse(idEditingController.text);
+                            await addImage(tempInt, nameEditingController.text,);
                             Navigator.pop(context);
                           }
                         },
@@ -743,11 +544,12 @@ class _AddImagePageState extends State<AddImagePage> {
 class ImageObject{
   int id;
   String name;
-  String imageName;
   String imageURL;
+  // String user;
+  // String size;
   bool favorited = false;
 
-  ImageObject(this.id, this.name, this.imageName, this.imageURL);
+  ImageObject(this.id, this.name, this.imageURL);
 }
 
 
