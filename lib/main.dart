@@ -162,6 +162,9 @@ class _MainPageState extends State<MyHomePage> {
         print(item);
         break;
       case 1:
+        print(item);
+        break;
+      case 2:
         if (_isLocked){
           break;
         } else {
@@ -314,20 +317,21 @@ class _MainPageState extends State<MyHomePage> {
                             Positioned(
                               top: -5,
                               right: -5,
-                              /*
-                              child: IconButton(
-                                tooltip: 'More',
-                                icon: const Icon(Icons.more_vert_outlined),
-                                onPressed: () {},
-                              ),
-
-                               */
                               child: PopupMenuButton(
                                 icon: const Icon(Icons.more_vert_outlined),  //don't specify icon if you want 3 dot menu
                                 color: Colors.grey,
                                 itemBuilder: (context) => [
                                   const PopupMenuItem<int>(
                                     value: 0,
+                                    child: Text(
+                                      "Share...",
+                                      style: TextStyle(
+                                          color: Colors.white
+                                      ),
+                                    ),
+                                  ),
+                                  const PopupMenuItem<int>(
+                                    value: 1,
                                     child: Text(
                                       "Rename",
                                       style: TextStyle(
@@ -336,7 +340,7 @@ class _MainPageState extends State<MyHomePage> {
                                     ),
                                   ),
                                   const PopupMenuItem<int>(
-                                    value: 1,
+                                    value: 2,
                                     child: Text(
                                       "Delete",
                                       style: TextStyle(
@@ -703,5 +707,7 @@ class _DetailScreenPage extends State<DetailScreenPage> {
 // https://stackoverflow.com/questions/59587409/how-to-put-json-data-from-server-with-gridview-flutter
 // https://firebase.flutter.dev/docs/firestore/usage/
 
+
+// https://www.youtube.com/watch?v=vYBc7Le5G6s
 
 
