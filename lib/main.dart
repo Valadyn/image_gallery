@@ -10,6 +10,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:path_provider/path_provider.dart';
+import 'package:intl/intl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,29 +23,20 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
 
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.grey,
       ),
       home: AuthGate(),
-      // home: const MyHomePage(title: 'Gallery App'),
     );
   }
 }
+
+
 
 
 
@@ -66,7 +58,6 @@ class AuthGate extends StatelessWidget { // https://firebase.flutter.dev/docs/ui
         }
         // Render your application if authenticated
         return const MyHomePage(title: 'Gallery App');
-        // return ImageObject(1, 'first', 'test');
       },
     );
   }
@@ -78,17 +69,10 @@ Future _signOut() async {
 
 
 
+
+
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key, required this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   final String title;
 
@@ -98,42 +82,31 @@ class MyHomePage extends StatefulWidget {
 
 
 
-class AddImagePage extends StatefulWidget {
-  const AddImagePage({Key? key, required this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<AddImagePage> createState() => _AddImagePageState();
-}
-
-
-
 class _MainPageState extends State<MyHomePage> {
 
   final Stream<QuerySnapshot> _usersStream = FirebaseFirestore.instance.collection('images').snapshots();
 
+  final FirebaseAuth auth = FirebaseAuth.instance;
+
+  bool _isLocked = false;
   bool _isGridView = true;
   int _gridViewCount = 3;
 
 
 
   void _gridViewOff() {
+    if (_isLocked){
+      return;
+    }
     setState(() {
       _isGridView = false;
     });
   }
 
   void _gridViewOn() {
+    if (_isLocked){
+      return;
+    }
     if (_isGridView) {
       if (_gridViewCount == 5) {
         setState(() {
@@ -152,16 +125,64 @@ class _MainPageState extends State<MyHomePage> {
     }
   }
 
+  void _lockSwitch() {
+    setState(() {
+      _isLocked = !_isLocked;
+    });
+  }
+
 
 
   CollectionReference images = FirebaseFirestore.instance.collection('images');
 
   Future<void> favouriteImage(var docId, bool currentFav) {
+    if (_isLocked){
+      currentFav = currentFav;
+    } else {
+      currentFav = !currentFav;
+    }
     return images
         .doc(docId)
-        .update({'favorited': !currentFav})
-        .then((value) => print("User Updated"))
-        .catchError((error) => print("Failed to update user: $error"));
+        .update({'favorited': currentFav})
+        .then((value) => print("Image Updated"))
+        .catchError((error) => print("Failed to update: $error"));
+  }
+
+  Future<void> deleteImage(var docId) {
+    return images
+        .doc(docId)
+        .delete()
+        .then((value) => print("Image Deleted"))
+        .catchError((error) => print("Failed to delete Image: $error"));
+  }
+
+  void ImageSelectedItem(BuildContext context, item, var docId) {
+    switch (item) {
+      case 0:
+        print(item);
+        break;
+      case 1:
+        if (_isLocked){
+          break;
+        } else {
+          deleteImage(docId);
+        }
+        break;
+    }
+  }
+
+  void MenuSelectedItem(BuildContext context, item) {
+    switch (item) {
+      case 0:
+        print(item);
+        break;
+      case 1:
+        print(item);
+        break;
+      case 2:
+        _signOut();
+        break;
+    }
   }
 
 
@@ -171,11 +192,52 @@ class _MainPageState extends State<MyHomePage> {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.menu),
-            tooltip: 'Menu',
-            onPressed: () async {_signOut();},
-          ),
+          leading: PopupMenuButton<int>(
+              icon: const Icon(Icons.menu),  //don't specify icon if you want 3 dot menu
+              color: Colors.grey,
+              itemBuilder: (context) => [
+                const PopupMenuItem<int>(
+                  value: 0,
+                  child: Text(
+                    "Settings",
+                    style: TextStyle(
+                        color: Colors.white
+                    ),
+                  ),
+                ),
+                const PopupMenuItem<int>(
+                  value: 1,
+                  child: Text(
+                    "Search",
+                    style: TextStyle(
+                        color: Colors.white
+                    ),
+                  ),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem<int>(
+                    value: 2,
+                    child: Row(
+                      children: const [
+                        Icon(
+                          Icons.logout,
+                          color: Colors.white,
+                        ),
+                        SizedBox(
+                          width: 7,
+                        ),
+                        Text(
+                          "Logout",
+                          style: TextStyle(
+                              color: Colors.white
+                          ),
+                        ),
+                      ],
+                    )
+                ),
+              ],
+              onSelected: (item) => {MenuSelectedItem(context, item)},
+            ),
           title: Text(widget.title),
           actions: <Widget>[
             IconButton(
@@ -189,9 +251,11 @@ class _MainPageState extends State<MyHomePage> {
               onPressed: _gridViewOff,
             ),
             IconButton(
-              icon: const Icon(Icons.lock_outline),
+              icon: _isLocked ?
+              const Icon(Icons.lock):
+              const Icon(Icons.lock_open),
               tooltip: 'Lock',
-              onPressed: () {},
+              onPressed: _lockSwitch,
             ),
           ]
         ),
@@ -217,28 +281,71 @@ class _MainPageState extends State<MyHomePage> {
 
                 children: snapshot.data!.docs.map((DocumentSnapshot document) {
                   Map<String, dynamic> data = document.data()! as Map<String, dynamic>;
-                  print(document.reference.id);
+
                   var docId = document.reference.id;
-                  print(data['favorited']);
+
+                  final User user = auth.currentUser as User;
+                  final uid = user.uid;
+
+                  if (uid == data['user']){
+
+                  }
+
                   return Container(
                       margin: const EdgeInsets.all(5),
                       color: Theme.of(context).colorScheme.primary,
                       child: Stack(
                           children: [
                             Container (
-                              constraints: BoxConstraints.expand(),
-                              child: Image.network(
-                                data['imageURL'],
-                                fit: BoxFit.cover,
+                              constraints: const BoxConstraints.expand(),
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => DetailScreenPage(data: data)),
+                                  );
+                                },
+                                child: Image.network(
+                                  data['imageURL'],
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                             ),
                             Positioned(
                               top: -5,
                               right: -5,
+                              /*
                               child: IconButton(
                                 tooltip: 'More',
                                 icon: const Icon(Icons.more_vert_outlined),
                                 onPressed: () {},
+                              ),
+
+                               */
+                              child: PopupMenuButton(
+                                icon: const Icon(Icons.more_vert_outlined),  //don't specify icon if you want 3 dot menu
+                                color: Colors.grey,
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem<int>(
+                                    value: 0,
+                                    child: Text(
+                                      "Rename",
+                                      style: TextStyle(
+                                          color: Colors.white
+                                      ),
+                                    ),
+                                  ),
+                                  const PopupMenuItem<int>(
+                                    value: 1,
+                                    child: Text(
+                                      "Delete",
+                                      style: TextStyle(
+                                          color: Colors.white
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                onSelected: (item) => {ImageSelectedItem(context, item, docId)},
                               ),
                             ),
                             Positioned(
@@ -361,6 +468,19 @@ class _MainPageState extends State<MyHomePage> {
 
 
 
+
+
+class AddImagePage extends StatefulWidget {
+  const AddImagePage({Key? key, required this.title}) : super(key: key);
+
+  final String title;
+
+  @override
+  State<AddImagePage> createState() => _AddImagePageState();
+}
+
+
+
 class _AddImagePageState extends State<AddImagePage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final FirebaseAuth auth = FirebaseAuth.instance;
@@ -368,9 +488,8 @@ class _AddImagePageState extends State<AddImagePage> {
   CollectionReference images = FirebaseFirestore.instance.collection('images');
 
   TextEditingController nameEditingController = TextEditingController();
-  TextEditingController idEditingController = TextEditingController();
 
-  var newImage;
+  var _newImage;
 
 
 
@@ -381,19 +500,25 @@ class _AddImagePageState extends State<AddImagePage> {
     File file = File(image!.path);
 
     setState(() {
-      newImage = file;
+      _newImage = file;
     });
   }
 
   Future uploadImage(String name) async {
+    final User user = auth.currentUser as User;
+    final uid = user.uid;
+
     await firebase_storage.FirebaseStorage.instance
-        .ref('images/$name.png')
-        .putFile(newImage);
+        .ref('images/$uid/$name.png')
+        .putFile(_newImage);
   }
 
   Future<String> downloadImageURL(String name) async {
+    final User user = auth.currentUser as User;
+    final uid = user.uid;
+
     String downloadURL = await firebase_storage.FirebaseStorage.instance
-        .ref('images/$name.png')
+        .ref('images/$uid/$name.png')
         .getDownloadURL();
 
     // Within your widgets:
@@ -402,7 +527,7 @@ class _AddImagePageState extends State<AddImagePage> {
   }
 
   // Dylan you should research this method more
-  Future<void> addImage(id, name) async {
+  Future<void> addImage(name) async {
     await uploadImage(name);
     String imageURL = await downloadImageURL(name);
     bool favorited = false;
@@ -412,24 +537,20 @@ class _AddImagePageState extends State<AddImagePage> {
 
     String currentUser = uid;
 
+    DateTime now = DateTime.now();
+    String formattedDate = DateFormat('kk:mm:ss-EEE-d/MMM/y').format(now);
+
     // Call the user's CollectionReference to add a new user
     return images
       .add({
-        'id': id, // John Doe
         'name': name, // Stokes and Sons
         'imageURL': imageURL,
         'user': currentUser,
+        'dateUploaded': formattedDate,
         'favorited': favorited // 42
       })
       .then((value) => print("image Added"))
       .catchError((error) => print("Failed to add image: $error"));
-  }
-
-
-
-  exitPage() {
-    newImage.clear();
-    Navigator.pop(context);
   }
 
 
@@ -476,21 +597,6 @@ class _AddImagePageState extends State<AddImagePage> {
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: TextFormField(
-                        controller: idEditingController,
-                        decoration: const InputDecoration(
-                          hintText: 'Enter id',
-                        ),
-                        validator: (String? value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter some text';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10.0),
                       child: ElevatedButton(
                         onPressed: () async {pickImage();},
                         child: Row(
@@ -498,11 +604,11 @@ class _AddImagePageState extends State<AddImagePage> {
                               Container (
                                 width: 55,
                                 height: 55,
-                                color: Colors.amber,
-                                child: newImage == null ?
+                                color: Colors.grey,
+                                child: _newImage == null ?
                                 Text('No Image Selected') :
                                 Image.file(
-                                  newImage,
+                                  _newImage,
                                   fit: BoxFit.cover,
                                 ),
                               ),
@@ -513,15 +619,14 @@ class _AddImagePageState extends State<AddImagePage> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10.0),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       child: ElevatedButton(
                         onPressed: () async {
                           // Validate will return true if the form is valid, or false if
                           // the form is invalid.
                           if (_formKey.currentState!.validate()) {
                             // Process data.
-                            int tempInt = int.parse(idEditingController.text);
-                            await addImage(tempInt, nameEditingController.text,);
+                            await addImage(nameEditingController.text,);
                             Navigator.pop(context);
                           }
                         },
@@ -541,15 +646,53 @@ class _AddImagePageState extends State<AddImagePage> {
 
 
 
-class ImageObject{
-  int id;
-  String name;
-  String imageURL;
-  // String user;
-  // String size;
-  bool favorited = false;
 
-  ImageObject(this.id, this.name, this.imageURL);
+
+class DetailScreenPage extends StatefulWidget {
+  DetailScreenPage({Key? key, required this.data}) : super(key: key);
+
+  final Map<String, dynamic> data;
+
+  @override
+  State<DetailScreenPage> createState() => _DetailScreenPage();
+}
+
+
+
+class _DetailScreenPage extends State<DetailScreenPage> {
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Back',
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          title: Text(widget.data['name']),
+        ),
+
+        body: SingleChildScrollView (
+          child: Column(
+            children: [
+              Center(
+                child: Image.network(
+                  widget.data['imageURL'],
+                ),
+              ),
+              Text(
+                widget.data['user']
+              )
+            ]
+          )
+        )
+      )
+    );
+  }
 }
 
 
