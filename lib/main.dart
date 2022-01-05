@@ -10,6 +10,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:path_provider/path_provider.dart';
+import 'package:intl/intl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,31 +23,18 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
 
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.grey,
       ),
       home: AuthGate(),
-      // home: const MyHomePage(title: 'Gallery App'),
     );
   }
 }
-
-
 
 
 
@@ -70,7 +58,6 @@ class AuthGate extends StatelessWidget { // https://firebase.flutter.dev/docs/ui
         }
         // Render your application if authenticated
         return const MyHomePage(title: 'Gallery App');
-        // return ImageObject(1, 'first', 'test');
       },
     );
   }
@@ -84,46 +71,8 @@ Future _signOut() async {
 
 
 
-
-
-
-Future _pickImage() async {
-  final ImagePicker _picker = ImagePicker();
-  final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-
-  File file = File(image!.path);
-
-  await firebase_storage.FirebaseStorage.instance
-      .ref('images/file-to-upload.png')
-      .putFile(file);
-}
-
-/*
-Future<void> downloadURLExample() async {
-  String downloadURL = await firebase_storage.FirebaseStorage.instance
-      .ref('images/file-to-upload.png')
-      .getDownloadURL();
-
-  // Within your widgets:
-  // Image.network(downloadURL);
-}
-*/
-
-
-
-
-
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key, required this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   final String title;
 
@@ -133,37 +82,31 @@ class MyHomePage extends StatefulWidget {
 
 
 
-class AddImagePage extends StatefulWidget {
-  const AddImagePage({Key? key, required this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<AddImagePage> createState() => _AddImagePageState();
-}
-
-
-
 class _MainPageState extends State<MyHomePage> {
+
+  final Stream<QuerySnapshot> _usersStream = FirebaseFirestore.instance.collection('images').snapshots();
+
+  final FirebaseAuth auth = FirebaseAuth.instance;
+
+  bool _isLocked = false;
   bool _isGridView = true;
   int _gridViewCount = 3;
 
+
+
   void _gridViewOff() {
+    if (_isLocked){
+      return;
+    }
     setState(() {
       _isGridView = false;
     });
   }
 
   void _gridViewOn() {
+    if (_isLocked){
+      return;
+    }
     if (_isGridView) {
       if (_gridViewCount == 5) {
         setState(() {
@@ -182,106 +125,76 @@ class _MainPageState extends State<MyHomePage> {
     }
   }
 
-
-
-  Future<String> downloadURLExample() async {
-    String downloadURL = await firebase_storage.FirebaseStorage.instance
-        .ref('images/file-to-upload.png')
-        .getDownloadURL();
-
-    // Within your widgets:
-    // Image.network(downloadURL);
-    return downloadURL.toString();
-  }
-
-  List<ImageObject> items = [];
-
-  _onPressed() {
-    items.clear();
-    FirebaseFirestore.instance.collection('images').get().then((querySnapshot) {
-      querySnapshot.docs.forEach((result) {
-        ImageObject item = ImageObject(result.data()['id'], result.data()['name'], result.data()['imageName'], result.data()['imageURL']);
-        items.add(item);
-        print(item.id);
-        print(item.name);
-        print(item.imageName);
-        print(item.imageURL);
-      });
+  void _lockSwitch() {
+    setState(() {
+      _isLocked = !_isLocked;
     });
   }
 
 
 
-
-
-
-
-
-
   CollectionReference images = FirebaseFirestore.instance.collection('images');
 
-  Future<void> uploadImage(String name) async {
-    Directory appDocDir = await getApplicationDocumentsDirectory();
-    String filePath = '${appDocDir.absolute}/$name.png';
-    // ...
-    // e.g. await uploadFile(filePath);
-    File file = File(filePath);
+  Future<void> favouriteImage(var docId, bool currentFav) {
+    if (_isLocked){
+      currentFav = currentFav;
+    } else {
+      currentFav = !currentFav;
+    }
+    return images
+        .doc(docId)
+        .update({'favorited': currentFav})
+        .then((value) => print("Image Updated"))
+        .catchError((error) => print("Failed to update: $error"));
+  }
 
-    try {
-      await firebase_storage.FirebaseStorage.instance
-          .ref('images/$name.png')
-          .putFile(file);
-    } catch (e) {
-      // e.g, e.code == 'canceled'
+  Future<void> editImage(var docId, String name) {
+    return images
+        .doc(docId)
+        .update({'name': name})
+        .then((value) => print("Image Updated"))
+        .catchError((error) => print("Failed to update: $error"));
+  }
+
+  Future<void> deleteImage(var docId) {
+    return images
+        .doc(docId)
+        .delete()
+        .then((value) => print("Image Deleted"))
+        .catchError((error) => print("Failed to delete Image: $error"));
+  }
+
+  void ImageSelectedItem(BuildContext context, item, var docId) {
+    switch (item) {
+      case 0:
+        print(item);
+        break;
+      case 1:
+        print(item);
+        break;
+      case 2:
+        if (_isLocked){
+          break;
+        } else {
+          deleteImage(docId);
+        }
+        break;
     }
   }
 
-  Future pickImage(String name) async {
-    final ImagePicker _picker = ImagePicker();
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-
-    File file = File(image!.path);
-
-    await firebase_storage.FirebaseStorage.instance
-        .ref('images/$name.png')
-        .putFile(file);
+  void MenuSelectedItem(BuildContext context, item) {
+    switch (item) {
+      case 0:
+        print(item);
+        break;
+      case 1:
+        print(item);
+        break;
+      case 2:
+        _signOut();
+        break;
+    }
   }
-
-  Future<String> downloadImageURL(String name) async {
-    String downloadURL = await firebase_storage.FirebaseStorage.instance
-        .ref('images/$name.png')
-        .getDownloadURL();
-
-    // Within your widgets:
-    // Image.network(downloadURL);
-    return downloadURL.toString();
-  }
-
-  Future<void> addImage(id, name, imageName) async {
-    await pickImage(imageName);
-    String imageURL = await downloadImageURL(imageName);
-    bool favorited = false;
-
-    // Call the user's CollectionReference to add a new user
-    return images
-        .add({
-      'id': id, // John Doe
-      'name': name, // Stokes and Sons
-      'imageName': imageName,
-      'imageURL': imageURL,
-      'favorited': favorited // 42
-    })
-        .then((value) => print("image Added"))
-        .catchError((error) => print("Failed to add image: $error"));
-  }
-
-
-
-
-
-
-
-
 
 
 
@@ -290,11 +203,52 @@ class _MainPageState extends State<MyHomePage> {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.menu),
-            tooltip: 'Menu',
-            onPressed: () async {_signOut();},
-          ),
+          leading: PopupMenuButton<int>(
+              icon: const Icon(Icons.menu),  //don't specify icon if you want 3 dot menu
+              color: Colors.grey,
+              itemBuilder: (context) => [
+                const PopupMenuItem<int>(
+                  value: 0,
+                  child: Text(
+                    "Settings",
+                    style: TextStyle(
+                        color: Colors.white
+                    ),
+                  ),
+                ),
+                const PopupMenuItem<int>(
+                  value: 1,
+                  child: Text(
+                    "Search",
+                    style: TextStyle(
+                        color: Colors.white
+                    ),
+                  ),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem<int>(
+                    value: 2,
+                    child: Row(
+                      children: const [
+                        Icon(
+                          Icons.logout,
+                          color: Colors.white,
+                        ),
+                        SizedBox(
+                          width: 7,
+                        ),
+                        Text(
+                          "Logout",
+                          style: TextStyle(
+                              color: Colors.white
+                          ),
+                        ),
+                      ],
+                    )
+                ),
+              ],
+              onSelected: (item) => {MenuSelectedItem(context, item)},
+            ),
           title: Text(widget.title),
           actions: <Widget>[
             IconButton(
@@ -308,79 +262,135 @@ class _MainPageState extends State<MyHomePage> {
               onPressed: _gridViewOff,
             ),
             IconButton(
-              icon: const Icon(Icons.lock_outline),
+              icon: _isLocked ?
+              const Icon(Icons.lock):
+              const Icon(Icons.lock_open),
               tooltip: 'Lock',
-              onPressed: () async {await addImage(1, 'second', 'hello');},
-            ),
-            IconButton(
-              icon: const Icon(Icons.menu),
-              tooltip: 'Menu',
-              onPressed: () async {
-                _onPressed();
-              },
+              onPressed: _lockSwitch,
             ),
           ]
         ),
 
-        body: _isGridView ?
-        GridView.builder(
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: _gridViewCount,
-          ),
 
-          itemCount: items.length,
-          // Provide a builder function. This is where the magic happens.
-          // Convert each item into a widget based on the type of item it is.
-          itemBuilder: (context, index) {
-            final item = items[index];
 
-            return Container(
-              margin: const EdgeInsets.all(5),
-              color: Theme.of(context).colorScheme.primary,
-              child: Stack(
-                children: [
-                  Image(
-                    image: NetworkImage(
-                      item.imageURL
-                    ),
-                  ),
-                  Positioned(
-                    top: -5,
-                    right: -5,
-                    child: IconButton(
-                      tooltip: 'More',
-                      icon: const Icon(Icons.more_vert_outlined),
-                      onPressed: () {},
-                    ),
-                  ),
-                  Positioned(
-                    bottom: -5,
-                    right: -5,
-                    child: IconButton(
-                      tooltip: 'Favourite',
-                      icon: const Icon(Icons.favorite_border),
-                      onPressed: () {},
-                    ),
-                  ),
-                ]
-              )
-            );
-          },
-        ) :
-        ListView.builder(
-          // Let the ListView know how many items it needs to build.
-          itemCount: items.length,
-          // Provide a builder function. This is where the magic happens.
-          // Convert each item into a widget based on the type of item it is.
-          itemBuilder: (context, index) {
-            final item = items[index];
+        body: StreamBuilder<QuerySnapshot>(
+          stream: _usersStream,
+          builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+            if (snapshot.hasError) {
+              return const Text('Something went wrong');
+            }
 
-            return ListTile(
-              title: Text(item.name.toString()),
-              subtitle: Text(item.name.toString()),
-            );
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Text("Loading");
+            }
+
+            if (_isGridView){
+              return GridView(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: _gridViewCount,
+                ),
+
+                children: snapshot.data!.docs.map((DocumentSnapshot document) {
+                  Map<String, dynamic> data = document.data()! as Map<String, dynamic>;
+
+                  var docId = document.reference.id;
+
+                  final User user = auth.currentUser as User;
+                  final uid = user.uid;
+
+                  if (uid == data['user']){
+
+                  }
+
+                  return Container(
+                      margin: const EdgeInsets.all(5),
+                      color: Theme.of(context).colorScheme.primary,
+                      child: Stack(
+                          children: [
+                            Container (
+                              constraints: const BoxConstraints.expand(),
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => DetailScreenPage(data: data)),
+                                  );
+                                },
+                                child: Image.network(
+                                  data['imageURL'],
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: -5,
+                              right: -5,
+                              child: PopupMenuButton(
+                                icon: const Icon(Icons.more_vert_outlined),  //don't specify icon if you want 3 dot menu
+                                color: Colors.grey,
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem<int>(
+                                    value: 0,
+                                    child: Text(
+                                      "Share...",
+                                      style: TextStyle(
+                                          color: Colors.white
+                                      ),
+                                    ),
+                                  ),
+                                  const PopupMenuItem<int>(
+                                    value: 1,
+                                    child: Text(
+                                      "Rename",
+                                      style: TextStyle(
+                                          color: Colors.white
+                                      ),
+                                    ),
+                                  ),
+                                  const PopupMenuItem<int>(
+                                    value: 2,
+                                    child: Text(
+                                      "Delete",
+                                      style: TextStyle(
+                                          color: Colors.white
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                onSelected: (item) => {ImageSelectedItem(context, item, docId)},
+                              ),
+                            ),
+                            Positioned(
+                              bottom: -5,
+                              right: -5,
+                              child: IconButton(
+                                tooltip: 'Favourite',
+                                icon: data['favorited'] ?
+                                Icon(Icons.favorite):
+                                Icon(Icons.favorite_border),
+                                onPressed: () async {favouriteImage(docId, data['favorited']);},
+                              ),
+                            ),
+                          ]
+                      )
+                  );
+                }).toList(),
+              );
+            } else {
+              return ListView(
+                children: snapshot.data!.docs.map((DocumentSnapshot document) {
+                  Map<String, dynamic> data = document.data()! as Map<String, dynamic>;
+                  return ListTile(
+                    title: Text(data['name']),
+                    subtitle: Text(data['user']),
+                  );
+                }).toList(),
+              );
+            }
           },
         ),
+
+
 
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
         floatingActionButton: FloatingActionButton(
@@ -394,6 +404,8 @@ class _MainPageState extends State<MyHomePage> {
           child: const Icon(Icons.add_a_photo_outlined),
         ),
 
+
+
         bottomNavigationBar: BottomAppBar(
           shape: const CircularNotchedRectangle(),
           color: Colors.blue,
@@ -406,46 +418,57 @@ class _MainPageState extends State<MyHomePage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: <Widget>[
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      padding: EdgeInsets.only(bottom: 5),
-                      constraints: BoxConstraints(),
-                      color: Colors.white,
-                      tooltip: 'Home',
-                      icon: const Icon(Icons.home_outlined),
-                      onPressed: () {},
-                    ),
-                    const Text (
-                      'HOME',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                  ]
+                const Spacer(),
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 5),
+                  child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          padding: EdgeInsets.only(bottom: 5),
+                          constraints: BoxConstraints(),
+                          color: Colors.white,
+                          tooltip: 'Home',
+                          icon: const Icon(Icons.home_outlined),
+                          onPressed: () {},
+                        ),
+                        const Text (
+                          'HOME',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      ]
+                  ),
                 ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      padding: EdgeInsets.only(bottom: 5),
-                      constraints: BoxConstraints(),
-                      color: Colors.white,
-                      tooltip: 'Shared',
-                      icon: const Icon(Icons.people_outlined),
-                      onPressed: () {},
-                    ),
-                    const Text (
-                      'SHARED',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                  ]
+                const Spacer(),
+                const Spacer(),
+                const Spacer(),
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 5),
+                  child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          padding: EdgeInsets.only(bottom: 5),
+                          constraints: BoxConstraints(),
+                          color: Colors.white,
+                          tooltip: 'Shared',
+                          icon: const Icon(Icons.people_outlined),
+                          onPressed: () {},
+                        ),
+                        const Text (
+                          'SHARED',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      ]
+                  ),
                 ),
+                const Spacer(),
               ],
             ),
           ),
@@ -457,47 +480,57 @@ class _MainPageState extends State<MyHomePage> {
 
 
 
+
+
+class AddImagePage extends StatefulWidget {
+  const AddImagePage({Key? key, required this.title}) : super(key: key);
+
+  final String title;
+
+  @override
+  State<AddImagePage> createState() => _AddImagePageState();
+}
+
+
+
 class _AddImagePageState extends State<AddImagePage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
-  TextEditingController nameEditingController = TextEditingController();
-  TextEditingController imageNameEditingController = TextEditingController();
-  TextEditingController idEditingController = TextEditingController();
-
-
+  final FirebaseAuth auth = FirebaseAuth.instance;
 
   CollectionReference images = FirebaseFirestore.instance.collection('images');
 
-  Future<void> uploadImage(String name) async {
-    Directory appDocDir = await getApplicationDocumentsDirectory();
-    String filePath = '${appDocDir.absolute}/$name.png';
-    // ...
-    // e.g. await uploadFile(filePath);
-    File file = File(filePath);
+  TextEditingController nameEditingController = TextEditingController();
 
-    try {
-      await firebase_storage.FirebaseStorage.instance
-          .ref('images/$name.png')
-          .putFile(file);
-    } catch (e) {
-      // e.g, e.code == 'canceled'
-    }
-  }
+  var _newImage;
 
-  Future pickImage(String name) async {
+
+
+  Future pickImage() async {
     final ImagePicker _picker = ImagePicker();
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
 
     File file = File(image!.path);
 
+    setState(() {
+      _newImage = file;
+    });
+  }
+
+  Future uploadImage(String name) async {
+    final User user = auth.currentUser as User;
+    final uid = user.uid;
+
     await firebase_storage.FirebaseStorage.instance
-        .ref('images/$name.png')
-        .putFile(file);
+        .ref('images/$uid/$name.png')
+        .putFile(_newImage);
   }
 
   Future<String> downloadImageURL(String name) async {
+    final User user = auth.currentUser as User;
+    final uid = user.uid;
+
     String downloadURL = await firebase_storage.FirebaseStorage.instance
-        .ref('images/$name.png')
+        .ref('images/$uid/$name.png')
         .getDownloadURL();
 
     // Within your widgets:
@@ -505,22 +538,31 @@ class _AddImagePageState extends State<AddImagePage> {
     return downloadURL.toString();
   }
 
-  Future<void> addImage(id, name, imageName) async {
-    await pickImage(imageName);
-    String imageURL = await downloadImageURL(imageName);
+  // Dylan you should research this method more
+  Future<void> addImage(name) async {
+    await uploadImage(name);
+    String imageURL = await downloadImageURL(name);
     bool favorited = false;
+
+    final User user = auth.currentUser as User;
+    final uid = user.uid;
+
+    String currentUser = uid;
+
+    DateTime now = DateTime.now();
+    String formattedDate = DateFormat('kk:mm:ss-EEE-d/MMM/y').format(now);
 
     // Call the user's CollectionReference to add a new user
     return images
-        .add({
-      'id': id, // John Doe
-      'name': name, // Stokes and Sons
-      'imageName': imageName,
-      'imageURL': imageURL,
-      'favorited': favorited // 42
-    })
-        .then((value) => print("image Added"))
-        .catchError((error) => print("Failed to add image: $error"));
+      .add({
+        'name': name,
+        'imageURL': imageURL,
+        'user': currentUser,
+        'dateUploaded': formattedDate,
+        'favorited': favorited // 42
+      })
+      .then((value) => print("image Added"))
+      .catchError((error) => print("Failed to add image: $error"));
   }
 
 
@@ -531,94 +573,80 @@ class _AddImagePageState extends State<AddImagePage> {
       home: Scaffold(
         appBar: AppBar(
           leading: IconButton(
-            icon: const Icon(Icons.menu),
-            tooltip: 'Menu',
-            onPressed: () {},
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Back',
+            onPressed: () {
+              Navigator.pop(context);
+            },
           ),
           title: Text(widget.title),
-          actions: <Widget>[
-            IconButton(
-              icon: const Icon(Icons.grid_view_outlined),
-              tooltip: 'Grid Display',
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: const Icon(Icons.sort_outlined),
-              tooltip: 'List Display',
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: const Icon(Icons.lock_outline),
-              tooltip: 'Lock',
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: const Icon(Icons.menu),
-              tooltip: 'Menu',
-              onPressed: () {},
-            ),
-          ]
         ),
 
         body: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             Form(
               key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  TextFormField(
-                    controller: nameEditingController,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter your email',
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: TextFormField(
+                        controller: nameEditingController,
+                        decoration: const InputDecoration(
+                          hintText: 'Enter name',
+                        ),
+                        validator: (String? value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter some text';
+                          }
+                          return null;
+                        },
+                      ),
                     ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter some text';
-                      }
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: imageNameEditingController,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter your email',
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: ElevatedButton(
+                        onPressed: () async {pickImage();},
+                        child: Row(
+                            children: [
+                              Container (
+                                width: 55,
+                                height: 55,
+                                color: Colors.grey,
+                                child: _newImage == null ?
+                                Text('No Image Selected') :
+                                Image.file(
+                                  _newImage,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              const Spacer(),
+                              const Text('Select Image'),
+                            ]
+                        ),
+                      ),
                     ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter some text';
-                      }
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: idEditingController,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter your email',
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          // Validate will return true if the form is valid, or false if
+                          // the form is invalid.
+                          if (_formKey.currentState!.validate()) {
+                            // Process data.
+                            await addImage(nameEditingController.text,);
+                            Navigator.pop(context);
+                          }
+                        },
+                        child: const Text('Submit'),
+                      ),
                     ),
-                    validator: (String? value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter some text';
-                      }
-                      return null;
-                    },
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        // Validate will return true if the form is valid, or false if
-                        // the form is invalid.
-                        if (_formKey.currentState!.validate()) {
-                          // Process data.
-                          int test = int.parse(idEditingController.text);
-                          await addImage(test, nameEditingController.text, imageNameEditingController.text);
-                        }
-                      },
-                      child: const Text('Submit'),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             )
           ],
@@ -630,14 +658,53 @@ class _AddImagePageState extends State<AddImagePage> {
 
 
 
-class ImageObject{
-  int id;
-  String name;
-  String imageName;
-  String imageURL;
-  bool favorited = false;
 
-  ImageObject(this.id, this.name, this.imageName, this.imageURL);
+
+class DetailScreenPage extends StatefulWidget {
+  DetailScreenPage({Key? key, required this.data}) : super(key: key);
+
+  final Map<String, dynamic> data;
+
+  @override
+  State<DetailScreenPage> createState() => _DetailScreenPage();
+}
+
+
+
+class _DetailScreenPage extends State<DetailScreenPage> {
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Back',
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          title: Text(widget.data['name']),
+        ),
+
+        body: SingleChildScrollView (
+          child: Column(
+            children: [
+              Center(
+                child: Image.network(
+                  widget.data['imageURL'],
+                ),
+              ),
+              Text(
+                widget.data['user']
+              )
+            ]
+          )
+        )
+      )
+    );
+  }
 }
 
 
@@ -648,5 +715,7 @@ class ImageObject{
 // https://stackoverflow.com/questions/59587409/how-to-put-json-data-from-server-with-gridview-flutter
 // https://firebase.flutter.dev/docs/firestore/usage/
 
+
+// https://www.youtube.com/watch?v=vYBc7Le5G6s
 
 
