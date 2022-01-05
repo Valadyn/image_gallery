@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutterfire_ui/auth.dart';
@@ -83,16 +84,12 @@ class MyHomePage extends StatefulWidget {
 
 
 class _MainPageState extends State<MyHomePage> {
-
-  final Stream<QuerySnapshot> _usersStream = FirebaseFirestore.instance.collection('images').snapshots();
-
   final FirebaseAuth auth = FirebaseAuth.instance;
+  CollectionReference images = FirebaseFirestore.instance.collection('images');
 
   bool _isLocked = false;
   bool _isGridView = true;
   int _gridViewCount = 3;
-
-
 
   void _gridViewOff() {
     if (_isLocked){
@@ -133,8 +130,6 @@ class _MainPageState extends State<MyHomePage> {
 
 
 
-  CollectionReference images = FirebaseFirestore.instance.collection('images');
-
   Future<void> favouriteImage(var docId, bool currentFav) {
     if (_isLocked){
       currentFav = currentFav;
@@ -148,35 +143,33 @@ class _MainPageState extends State<MyHomePage> {
         .catchError((error) => print("Failed to update: $error"));
   }
 
-  Future<void> editImage(var docId, String name) {
-    return images
-        .doc(docId)
-        .update({'name': name})
-        .then((value) => print("Image Updated"))
-        .catchError((error) => print("Failed to update: $error"));
-  }
+  Future<void> deleteImage(var docId, var imageData) {
 
-  Future<void> deleteImage(var docId) {
     return images
         .doc(docId)
         .delete()
-        .then((value) => print("Image Deleted"))
+        .then((value) => FirebaseStorage.instance.refFromURL(imageData['imageURL']).delete())
         .catchError((error) => print("Failed to delete Image: $error"));
   }
 
-  void ImageSelectedItem(BuildContext context, item, var docId) {
+
+
+  void ImageSelectedItem(BuildContext context, item, var docId, var imageData) {
     switch (item) {
       case 0:
         print(item);
         break;
       case 1:
-        print(item);
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => EditImagePage(imageData: imageData, docId: docId)),
+        );
         break;
       case 2:
         if (_isLocked){
           break;
         } else {
-          deleteImage(docId);
+          deleteImage(docId, imageData);
         }
         break;
     }
@@ -200,6 +193,9 @@ class _MainPageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    String userId = (auth.currentUser as User).uid;
+    Stream<QuerySnapshot> _usersStream = FirebaseFirestore.instance.collection('images').where('user', isEqualTo: userId).snapshots(includeMetadataChanges: true);
+
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
@@ -298,10 +294,6 @@ class _MainPageState extends State<MyHomePage> {
                   final User user = auth.currentUser as User;
                   final uid = user.uid;
 
-                  if (uid == data['user']){
-
-                  }
-
                   return Container(
                       margin: const EdgeInsets.all(5),
                       color: Theme.of(context).colorScheme.primary,
@@ -313,7 +305,7 @@ class _MainPageState extends State<MyHomePage> {
                                 onTap: () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (context) => DetailScreenPage(data: data)),
+                                    MaterialPageRoute(builder: (context) => DetailScreenPage(imageData: data)),
                                   );
                                 },
                                 child: Image.network(
@@ -357,7 +349,7 @@ class _MainPageState extends State<MyHomePage> {
                                     ),
                                   ),
                                 ],
-                                onSelected: (item) => {ImageSelectedItem(context, item, docId)},
+                                onSelected: (item) => {ImageSelectedItem(context, item, docId, data)},
                               ),
                             ),
                             Positioned(
@@ -540,8 +532,12 @@ class _AddImagePageState extends State<AddImagePage> {
 
   // Dylan you should research this method more
   Future<void> addImage(name) async {
-    await uploadImage(name);
-    String imageURL = await downloadImageURL(name);
+    DateTime now = DateTime.now();
+    String formattedDate = DateFormat('EEE d-M-y ss:mm:hh aaa').format(now);
+    String tempName = name + ' ' + formattedDate;
+
+    await uploadImage(tempName);
+    String imageURL = await downloadImageURL(tempName);
     bool favorited = false;
 
     final User user = auth.currentUser as User;
@@ -549,13 +545,11 @@ class _AddImagePageState extends State<AddImagePage> {
 
     String currentUser = uid;
 
-    DateTime now = DateTime.now();
-    String formattedDate = DateFormat('kk:mm:ss-EEE-d/MMM/y').format(now);
-
     // Call the user's CollectionReference to add a new user
     return images
       .add({
         'name': name,
+        'imageName': tempName,
         'imageURL': imageURL,
         'user': currentUser,
         'dateUploaded': formattedDate,
@@ -657,13 +651,110 @@ class _AddImagePageState extends State<AddImagePage> {
 }
 
 
+class EditImagePage extends StatefulWidget {
+  const EditImagePage({Key? key, required this.imageData, required this.docId}) : super(key: key);
+
+  final Map<String, dynamic> imageData;
+  final String docId;
+
+  @override
+  State<EditImagePage> createState() => _EditImagePageState();
+}
+
+
+
+class _EditImagePageState extends State<EditImagePage> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  CollectionReference images = FirebaseFirestore.instance.collection('images');
+
+  TextEditingController nameEditingController = TextEditingController();
+
+
+
+  Future<void> editImage(var docId, String name) {
+    return images
+        .doc(docId)
+        .update({'name': name})
+        .then((value) => print("Image Updated"))
+        .catchError((error) => print("Failed to update: $error"));
+  }
+
+
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+        home: Scaffold(
+          appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              tooltip: 'Back',
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+            title: Text('Rename Image: ' + widget.imageData['name']),
+          ),
+
+          body: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Form(
+                key: _formKey,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: TextFormField(
+                          controller: nameEditingController,
+                          decoration: const InputDecoration(
+                            hintText: 'Enter name',
+                          ),
+                          validator: (String? value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter some text';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            // Validate will return true if the form is valid, or false if
+                            // the form is invalid.
+                            if (_formKey.currentState!.validate()) {
+                              // Process data.
+                              await editImage(widget.docId, nameEditingController.text,);
+                              Navigator.pop(context);
+                            }
+                          },
+                          child: const Text('Submit'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            ],
+          ),
+        )
+    );
+  }
+}
+
 
 
 
 class DetailScreenPage extends StatefulWidget {
-  DetailScreenPage({Key? key, required this.data}) : super(key: key);
+  DetailScreenPage({Key? key, required this.imageData}) : super(key: key);
 
-  final Map<String, dynamic> data;
+  final Map<String, dynamic> imageData;
 
   @override
   State<DetailScreenPage> createState() => _DetailScreenPage();
@@ -685,7 +776,7 @@ class _DetailScreenPage extends State<DetailScreenPage> {
               Navigator.pop(context);
             },
           ),
-          title: Text(widget.data['name']),
+          title: Text(widget.imageData['name']),
         ),
 
         body: SingleChildScrollView (
@@ -693,11 +784,11 @@ class _DetailScreenPage extends State<DetailScreenPage> {
             children: [
               Center(
                 child: Image.network(
-                  widget.data['imageURL'],
+                  widget.imageData['imageURL'],
                 ),
               ),
               Text(
-                widget.data['user']
+                widget.imageData['user']
               )
             ]
           )
