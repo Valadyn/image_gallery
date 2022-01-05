@@ -148,6 +148,14 @@ class _MainPageState extends State<MyHomePage> {
         .catchError((error) => print("Failed to update: $error"));
   }
 
+  Future<void> editImage(var docId, String name) {
+    return images
+        .doc(docId)
+        .update({'name': name})
+        .then((value) => print("Image Updated"))
+        .catchError((error) => print("Failed to update: $error"));
+  }
+
   Future<void> deleteImage(var docId) {
     return images
         .doc(docId)
@@ -547,7 +555,7 @@ class _AddImagePageState extends State<AddImagePage> {
     // Call the user's CollectionReference to add a new user
     return images
       .add({
-        'name': name, // Stokes and Sons
+        'name': name,
         'imageURL': imageURL,
         'user': currentUser,
         'dateUploaded': formattedDate,
