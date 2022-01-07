@@ -160,7 +160,7 @@ class _MainPageState extends State<MyHomePage> {
         .doc(docId)
         .delete()
         .then((value) =>
-            FirebaseStorage.instance.refFromURL(imageData['imageURL']).delete())
+        FirebaseStorage.instance.refFromURL(imageData['imageURL']).delete())
         .catchError((error) => print("Failed to delete Image: $error"));
   }
 
@@ -172,8 +172,8 @@ class _MainPageState extends State<MyHomePage> {
         .catchError((error) => print("Failed to update: $error"));
   }
 
-  Future<void> _displayTextInputDialog(
-      BuildContext context, var docId, String currentName) async {
+  Future<void> _displayTextInputDialog(BuildContext context, var docId,
+      String currentName) async {
     _textFieldController.text = '';
 
     return showDialog(
@@ -209,7 +209,7 @@ class _MainPageState extends State<MyHomePage> {
     if (!_isLocked) {
       switch (item) {
         case 0:
-          /*
+        /*
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -220,15 +220,6 @@ class _MainPageState extends State<MyHomePage> {
           break;
         case 1:
           _displayTextInputDialog(context, docId, imageData['name']);
-          /*
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) =>
-                    EditImagePage(imageData: imageData, docId: docId)),
-          );
-
-               */
           break;
         case 2:
           deleteImage(docId, imageData);
@@ -255,17 +246,17 @@ class _MainPageState extends State<MyHomePage> {
     String currentUid = (auth.currentUser as User).uid;
     Stream<QuerySnapshot> _imageStream;
 
-    if (nameSearchingController.text != '') {
-      _imageStream = FirebaseFirestore.instance
-          .collection('images')
-          .where('user', isEqualTo: currentUid)
-          .where('name', isGreaterThanOrEqualTo: nameSearchingController.text)
-          .where('name', isLessThan: nameSearchingController.text + 'z')
-          .snapshots(includeMetadataChanges: true);
-    } else if (nameSearchingController.text != '' && _sharedPage) {
+    if (nameSearchingController.text != '' && _sharedPage) {
       _imageStream = FirebaseFirestore.instance
           .collection('images')
           .where('shared', isEqualTo: true)
+          .where('name', isGreaterThanOrEqualTo: nameSearchingController.text)
+          .where('name', isLessThan: nameSearchingController.text + 'z')
+          .snapshots(includeMetadataChanges: true);
+    } else if (nameSearchingController.text != '') {
+      _imageStream = FirebaseFirestore.instance
+          .collection('images')
+          .where('user', isEqualTo: currentUid)
           .where('name', isGreaterThanOrEqualTo: nameSearchingController.text)
           .where('name', isLessThan: nameSearchingController.text + 'z')
           .snapshots(includeMetadataChanges: true);
@@ -288,7 +279,8 @@ class _MainPageState extends State<MyHomePage> {
               icon: const Icon(Icons.menu),
               //don't specify icon if you want 3 dot menu
               color: Colors.grey,
-              itemBuilder: (context) => [
+              itemBuilder: (context) =>
+              [
                 const PopupMenuItem<int>(
                   value: 0,
                   child: Text(
@@ -369,7 +361,7 @@ class _MainPageState extends State<MyHomePage> {
                       prefixIcon: Icon(Icons.search),
                       border: OutlineInputBorder(
                           borderRadius:
-                              BorderRadius.all(Radius.circular(25.0)))),
+                          BorderRadius.all(Radius.circular(25.0)))),
                 ),
               ),
             ),
@@ -384,7 +376,15 @@ class _MainPageState extends State<MyHomePage> {
                       return const Text('Something went wrong');
                     }
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Text("Loading");
+                      return SizedBox(
+                        width: 50,
+                        height: 50,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            semanticsLabel: 'Linear progress indicator',
+                          ),
+                        ),
+                      );
                     }
 
                     if (_isGridView) {
@@ -393,15 +393,18 @@ class _MainPageState extends State<MyHomePage> {
                           crossAxisCount: _gridViewCount,
                         ),
                         children: snapshot.data!.docs.map(
-                          (DocumentSnapshot document) {
+                              (DocumentSnapshot document) {
                             Map<String, dynamic> data =
-                                document.data()! as Map<String, dynamic>;
+                            document.data()! as Map<String, dynamic>;
 
                             var docId = document.reference.id;
 
                             return Container(
                               margin: const EdgeInsets.all(5),
-                              color: Theme.of(context).colorScheme.primary,
+                              color: Theme
+                                  .of(context)
+                                  .colorScheme
+                                  .primary,
                               child: Stack(
                                 children: [
                                   Container(
@@ -426,65 +429,67 @@ class _MainPageState extends State<MyHomePage> {
                                   ),
                                   !_sharedPage || currentUid == data['user']
                                       ? Positioned(
-                                          top: -5,
-                                          right: -5,
-                                          child: PopupMenuButton(
-                                            icon: const Icon(
-                                                Icons.more_vert_outlined),
-                                            //don't specify icon if you want 3 dot menu
-                                            color: Colors.grey,
-                                            itemBuilder: (context) => [
-                                              PopupMenuItem<int>(
-                                                value: 0,
-                                                child: Text(
-                                                  data['shared']
-                                                      ? 'Shared'
-                                                      : 'Share...',
-                                                  style: TextStyle(
-                                                      color: Colors.white),
-                                                ),
-                                              ),
-                                              const PopupMenuItem<int>(
-                                                value: 1,
-                                                child: Text(
-                                                  "Rename",
-                                                  style: TextStyle(
-                                                      color: Colors.white),
-                                                ),
-                                              ),
-                                              const PopupMenuItem<int>(
-                                                value: 2,
-                                                child: Text(
-                                                  "Delete",
-                                                  style: TextStyle(
-                                                      color: Colors.white),
-                                                ),
-                                              ),
-                                            ],
-                                            onSelected: (item) => {
-                                              ImageSelectedItem(
-                                                  context, item, docId, data)
-                                            },
+                                    top: -5,
+                                    right: -5,
+                                    child: PopupMenuButton(
+                                      icon: const Icon(
+                                          Icons.more_vert_outlined),
+                                      //don't specify icon if you want 3 dot menu
+                                      color: Colors.grey,
+                                      itemBuilder: (context) =>
+                                      [
+                                        PopupMenuItem<int>(
+                                          value: 0,
+                                          child: Text(
+                                            data['shared']
+                                                ? 'Shared'
+                                                : 'Share...',
+                                            style: TextStyle(
+                                                color: Colors.white),
                                           ),
-                                        )
+                                        ),
+                                        const PopupMenuItem<int>(
+                                          value: 1,
+                                          child: Text(
+                                            "Rename",
+                                            style: TextStyle(
+                                                color: Colors.white),
+                                          ),
+                                        ),
+                                        const PopupMenuItem<int>(
+                                          value: 2,
+                                          child: Text(
+                                            "Delete",
+                                            style: TextStyle(
+                                                color: Colors.white),
+                                          ),
+                                        ),
+                                      ],
+                                      onSelected: (item) =>
+                                      {
+                                        ImageSelectedItem(
+                                            context, item, docId, data)
+                                      },
+                                    ),
+                                  )
                                       : Container(),
                                   !_sharedPage || currentUid == data['user']
                                       ? Positioned(
-                                          bottom: -5,
-                                          right: -5,
-                                          child: IconButton(
-                                            tooltip: 'Favourite',
-                                            icon: data['favorited']
-                                                ? Icon(Icons.favorite)
-                                                : Icon(Icons.favorite_border),
-                                            onPressed: () async {
-                                              if (!_isLocked) {
-                                                favouriteImage(
-                                                    docId, data['favorited']);
-                                              }
-                                            },
-                                          ),
-                                        )
+                                    bottom: -5,
+                                    right: -5,
+                                    child: IconButton(
+                                      tooltip: 'Favourite',
+                                      icon: data['favorited']
+                                          ? Icon(Icons.favorite)
+                                          : Icon(Icons.favorite_border),
+                                      onPressed: () async {
+                                        if (!_isLocked) {
+                                          favouriteImage(
+                                              docId, data['favorited']);
+                                        }
+                                      },
+                                    ),
+                                  )
                                       : Container(),
                                 ],
                               ),
@@ -497,7 +502,7 @@ class _MainPageState extends State<MyHomePage> {
                         children: snapshot.data!.docs
                             .map((DocumentSnapshot document) {
                           Map<String, dynamic> data =
-                              document.data()! as Map<String, dynamic>;
+                          document.data()! as Map<String, dynamic>;
                           return ListTile(
                             title: Text(data['name']),
                             subtitle: Text(data['user']),
@@ -530,7 +535,10 @@ class _MainPageState extends State<MyHomePage> {
           shape: const CircularNotchedRectangle(),
           color: Colors.blue,
           child: IconTheme(
-            data: IconThemeData(color: Theme.of(context).colorScheme.onPrimary),
+            data: IconThemeData(color: Theme
+                .of(context)
+                .colorScheme
+                .onPrimary),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: <Widget>[
@@ -666,14 +674,14 @@ class _AddImagePageState extends State<AddImagePage> {
     // Call the user's CollectionReference to add a new user
     return images
         .add({
-          'name': name,
-          'imageName': tempName,
-          'imageURL': imageURL,
-          'user': currentUser,
-          'dateUploaded': formattedDate,
-          'favorited': favorited,
-          'shared': shared,
-        })
+      'name': name,
+      'imageName': tempName,
+      'imageURL': imageURL,
+      'user': currentUser,
+      'dateUploaded': formattedDate,
+      'favorited': favorited,
+      'shared': shared,
+    })
         .then((value) => print("image Added"))
         .catchError((error) => print("Failed to add image: $error"));
   }
@@ -682,181 +690,88 @@ class _AddImagePageState extends State<AddImagePage> {
   Widget build(BuildContext context) {
     return MaterialApp(
         home: Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          tooltip: 'Back',
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        title: Text(widget.title),
-      ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          Form(
-            key: _formKey,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: TextFormField(
-                      controller: nameEditingController,
-                      decoration: const InputDecoration(
-                        hintText: 'Enter name',
-                      ),
-                      validator: (String? value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter some text';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        pickImage();
-                      },
-                      child: Row(children: [
-                        Container(
-                          width: 55,
-                          height: 55,
-                          color: Colors.grey,
-                          child: _newImage == null
-                              ? Text('No Image Selected')
-                              : Image.file(
-                                  _newImage,
-                                  fit: BoxFit.cover,
-                                ),
+          appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              tooltip: 'Back',
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+            title: Text(widget.title),
+          ),
+          body: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Form(
+                key: _formKey,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: TextFormField(
+                          controller: nameEditingController,
+                          decoration: const InputDecoration(
+                            hintText: 'Enter name',
+                          ),
+                          validator: (String? value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter some text';
+                            }
+                            return null;
+                          },
                         ),
-                        const Spacer(),
-                        const Text('Select Image'),
-                      ]),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        // Validate will return true if the form is valid, or false if
-                        // the form is invalid.
-                        if (_formKey.currentState!.validate()) {
-                          // Process data.
-                          await addImage(
-                            nameEditingController.text,
-                          );
-                          Navigator.pop(context);
-                        }
-                      },
-                      child: const Text('Submit'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-        ],
-      ),
-    ));
-  }
-}
-
-class EditImagePage extends StatefulWidget {
-  const EditImagePage({Key? key, required this.imageData, required this.docId})
-      : super(key: key);
-
-  final Map<String, dynamic> imageData;
-  final String docId;
-
-  @override
-  State<EditImagePage> createState() => _EditImagePageState();
-}
-
-class _EditImagePageState extends State<EditImagePage> {
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
-  CollectionReference images = FirebaseFirestore.instance.collection('images');
-
-  TextEditingController nameEditingController = TextEditingController();
-
-  Future<void> editImage(var docId, String name) {
-    return images
-        .doc(docId)
-        .update({'name': name})
-        .then((value) => print("Image Updated"))
-        .catchError((error) => print("Failed to update: $error"));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-        home: Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          tooltip: 'Back',
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        title: Text('Rename Image: ' + widget.imageData['name']),
-      ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          Form(
-            key: _formKey,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: TextFormField(
-                      controller: nameEditingController,
-                      decoration: const InputDecoration(
-                        hintText: 'Enter name',
                       ),
-                      validator: (String? value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter some text';
-                        }
-                        return null;
-                      },
-                    ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            pickImage();
+                          },
+                          child: Row(children: [
+                            Container(
+                              width: 55,
+                              height: 55,
+                              color: Colors.grey,
+                              child: _newImage == null
+                                  ? Text('No Image Selected')
+                                  : Image.file(
+                                _newImage,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            const Spacer(),
+                            const Text('Select Image'),
+                          ]),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            // Validate will return true if the form is valid, or false if
+                            // the form is invalid.
+                            if (_formKey.currentState!.validate()) {
+                              // Process data.
+                              await addImage(
+                                nameEditingController.text,
+                              );
+                              Navigator.pop(context);
+                            }
+                          },
+                          child: const Text('Submit'),
+                        ),
+                      ),
+                    ],
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        // Validate will return true if the form is valid, or false if
-                        // the form is invalid.
-                        if (_formKey.currentState!.validate()) {
-                          // Process data.
-                          await editImage(
-                            widget.docId,
-                            nameEditingController.text,
-                          );
-                          Navigator.pop(context);
-                        }
-                      },
-                      child: const Text('Submit'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-        ],
-      ),
-    ));
+                ),
+              )
+            ],
+          ),
+        ));
   }
 }
 
@@ -1017,9 +932,9 @@ class _UserSharingPage extends State<UserSharingPage> {
 
             return ListView(
               children: snapshot.data!.docs.map(
-                (DocumentSnapshot document) {
+                    (DocumentSnapshot document) {
                   Map<String, dynamic> data =
-                      document.data()! as Map<String, dynamic>;
+                  document.data()! as Map<String, dynamic>;
                   return ListTile(
                     title: Text(data['identifier']),
                     subtitle: Text(data['user']),
