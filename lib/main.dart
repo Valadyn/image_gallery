@@ -51,6 +51,7 @@ class AuthGate extends StatelessWidget {
               EmailProviderConfiguration(),
             ],
           );
+          userSetup();
         }
         // Render your application if authenticated
         return const MyHomePage(title: 'Gallery App');
@@ -60,8 +61,16 @@ class AuthGate extends StatelessWidget {
 }
 // https://www.youtube.com/watch?v=1xPMbwOFa9I
 
-Future _signOut() async {
+Future signout() async {
   await FirebaseAuth.instance.signOut();
+}
+
+Future<void> userSetup() async {
+  CollectionReference users = FirebaseFirestore.instance.collection('users');
+  FirebaseAuth auth = FirebaseAuth.instance;
+  String uid = (auth.currentUser as User).uid;
+  users.add({'uid': uid});
+  return;
 }
 
 class MyHomePage extends StatefulWidget {
@@ -80,11 +89,27 @@ class _MainPageState extends State<MyHomePage> {
   TextEditingController nameSearchingController = TextEditingController();
   TextEditingController _textFieldController = TextEditingController();
 
+  final scrollController = ScrollController();
+
   bool _sharedPage = false;
   bool _searchVisible = false;
   bool _isLocked = false;
   bool _isGridView = true;
   int _gridViewCount = 3;
+  int _index = 0;
+
+  int test = 0;
+
+  //pagination https://www.youtube.com/watch?v=IruuzPydPz4
+
+  void initState() {
+    scrollController.addListener(scrollListener);
+  }
+
+  void scrollListener() {
+    if (scrollController.offset >= scrollController.position.maxScrollExtent &&
+        !scrollController.position.outOfRange) {}
+  }
 
   void _gridViewOff() {
     setState(() {
@@ -160,20 +185,20 @@ class _MainPageState extends State<MyHomePage> {
         .doc(docId)
         .delete()
         .then((value) =>
-        FirebaseStorage.instance.refFromURL(imageData['imageURL']).delete())
+            FirebaseStorage.instance.refFromURL(imageData['imageURL']).delete())
         .catchError((error) => print("Failed to delete Image: $error"));
   }
 
   Future<void> editImage(var docId, String name) {
     return images
         .doc(docId)
-        .update({'name': name})
+        .update({'name': name.toLowerCase()})
         .then((value) => print("Image Updated"))
         .catchError((error) => print("Failed to update: $error"));
   }
 
-  Future<void> _displayTextInputDialog(BuildContext context, var docId,
-      String currentName) async {
+  Future<void> _searchNameInputDialog(
+      BuildContext context, var docId, String currentName) async {
     _textFieldController.text = '';
 
     return showDialog(
@@ -209,7 +234,7 @@ class _MainPageState extends State<MyHomePage> {
     if (!_isLocked) {
       switch (item) {
         case 0:
-        /*
+          /*
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -219,7 +244,7 @@ class _MainPageState extends State<MyHomePage> {
           shareImage(docId, imageData['shared']);
           break;
         case 1:
-          _displayTextInputDialog(context, docId, imageData['name']);
+          _searchNameInputDialog(context, docId, imageData['name']);
           break;
         case 2:
           deleteImage(docId, imageData);
@@ -231,34 +256,36 @@ class _MainPageState extends State<MyHomePage> {
   void MenuSelectedItem(BuildContext context, item) {
     switch (item) {
       case 0:
+        getImages(1, null);
         break;
       case 1:
         showSearchBar();
         break;
       case 2:
-        _signOut();
+        signout();
         break;
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  late Stream<QuerySnapshot> _imageStream;
+
+  getImages(int limit, var snapshot) {
     String currentUid = (auth.currentUser as User).uid;
-    Stream<QuerySnapshot> _imageStream;
+    String _searchInput = nameSearchingController.text.toLowerCase();
 
     if (nameSearchingController.text != '' && _sharedPage) {
       _imageStream = FirebaseFirestore.instance
           .collection('images')
           .where('shared', isEqualTo: true)
-          .where('name', isGreaterThanOrEqualTo: nameSearchingController.text)
-          .where('name', isLessThan: nameSearchingController.text + 'z')
+          .where('name', isGreaterThanOrEqualTo: _searchInput)
+          .where('name', isLessThan: _searchInput + 'z')
           .snapshots(includeMetadataChanges: true);
     } else if (nameSearchingController.text != '') {
       _imageStream = FirebaseFirestore.instance
           .collection('images')
           .where('user', isEqualTo: currentUid)
-          .where('name', isGreaterThanOrEqualTo: nameSearchingController.text)
-          .where('name', isLessThan: nameSearchingController.text + 'z')
+          .where('name', isGreaterThanOrEqualTo: _searchInput)
+          .where('name', isLessThan: _searchInput + 'z')
           .snapshots(includeMetadataChanges: true);
     } else if (_sharedPage) {
       _imageStream = FirebaseFirestore.instance
@@ -266,10 +293,43 @@ class _MainPageState extends State<MyHomePage> {
           .where('shared', isEqualTo: true)
           .snapshots(includeMetadataChanges: true);
     } else {
+      if (snapshot == null) {
+        _imageStream = FirebaseFirestore.instance
+            .collection('images')
+            .where('user', isEqualTo: currentUid)
+            .limit(limit)
+            .snapshots(includeMetadataChanges: true);
+      } else {
+        _imageStream = FirebaseFirestore.instance
+            .collection('images')
+            .where('user', isEqualTo: currentUid)
+            .limit(limit)
+            .startAfterDocument(snapshot)
+            .snapshots(includeMetadataChanges: true);
+      }
+      /*
       _imageStream = FirebaseFirestore.instance
           .collection('images')
           .where('user', isEqualTo: currentUid)
-          .snapshots(includeMetadataChanges: true);
+          .limit(limit);
+
+      if (snapshot == null){
+        _imageStream.get();
+      } else {
+        _imageStream.startAfterDocument(snapshot).get();
+      }
+
+       */
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    String currentUid = (auth.currentUser as User).uid;
+
+    if (test == 0) {
+      getImages(1, null);
+      test += 1;
     }
 
     return MaterialApp(
@@ -279,8 +339,7 @@ class _MainPageState extends State<MyHomePage> {
               icon: const Icon(Icons.menu),
               //don't specify icon if you want 3 dot menu
               color: Colors.grey,
-              itemBuilder: (context) =>
-              [
+              itemBuilder: (context) => [
                 const PopupMenuItem<int>(
                   value: 0,
                   child: Text(
@@ -356,12 +415,13 @@ class _MainPageState extends State<MyHomePage> {
                     setState(() {});
                   },
                   decoration: const InputDecoration(
-                      labelText: "Search",
-                      hintText: "Search",
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(
-                          borderRadius:
-                          BorderRadius.all(Radius.circular(25.0)))),
+                    labelText: "Search",
+                    hintText: "Search",
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(25.0)),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -389,22 +449,20 @@ class _MainPageState extends State<MyHomePage> {
 
                     if (_isGridView) {
                       return GridView(
+                        controller: scrollController,
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: _gridViewCount,
                         ),
                         children: snapshot.data!.docs.map(
-                              (DocumentSnapshot document) {
+                          (DocumentSnapshot document) {
                             Map<String, dynamic> data =
-                            document.data()! as Map<String, dynamic>;
+                                document.data()! as Map<String, dynamic>;
 
                             var docId = document.reference.id;
 
                             return Container(
                               margin: const EdgeInsets.all(5),
-                              color: Theme
-                                  .of(context)
-                                  .colorScheme
-                                  .primary,
+                              color: Theme.of(context).colorScheme.primary,
                               child: Stack(
                                 children: [
                                   Container(
@@ -415,9 +473,10 @@ class _MainPageState extends State<MyHomePage> {
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
-                                                builder: (context) =>
-                                                    DetailScreenPage(
-                                                        imageData: data)),
+                                              builder: (context) =>
+                                                  DetailScreenPage(
+                                                      imageData: data),
+                                            ),
                                           );
                                         }
                                       },
@@ -429,67 +488,68 @@ class _MainPageState extends State<MyHomePage> {
                                   ),
                                   !_sharedPage || currentUid == data['user']
                                       ? Positioned(
-                                    top: -5,
-                                    right: -5,
-                                    child: PopupMenuButton(
-                                      icon: const Icon(
-                                          Icons.more_vert_outlined),
-                                      //don't specify icon if you want 3 dot menu
-                                      color: Colors.grey,
-                                      itemBuilder: (context) =>
-                                      [
-                                        PopupMenuItem<int>(
-                                          value: 0,
-                                          child: Text(
-                                            data['shared']
-                                                ? 'Shared'
-                                                : 'Share...',
-                                            style: TextStyle(
-                                                color: Colors.white),
+                                          top: -5,
+                                          right: -5,
+                                          child: PopupMenuButton(
+                                            icon: const Icon(
+                                                Icons.more_vert_outlined),
+                                            //don't specify icon if you want 3 dot menu
+                                            color: Colors.grey,
+                                            itemBuilder: (context) => [
+                                              PopupMenuItem<int>(
+                                                value: 0,
+                                                child: Text(
+                                                  data['shared']
+                                                      ? 'Shared'
+                                                      : 'Share...',
+                                                  style: TextStyle(
+                                                      color: Colors.white),
+                                                ),
+                                              ),
+                                              const PopupMenuItem<int>(
+                                                value: 1,
+                                                child: Text(
+                                                  "Rename",
+                                                  style: TextStyle(
+                                                      color: Colors.white),
+                                                ),
+                                              ),
+                                              const PopupMenuItem<int>(
+                                                value: 2,
+                                                child: Text(
+                                                  "Delete",
+                                                  style: TextStyle(
+                                                      color: Colors.white),
+                                                ),
+                                              ),
+                                            ],
+                                            onSelected: (item) => {
+                                              ImageSelectedItem(
+                                                  context, item, docId, data)
+                                            },
                                           ),
-                                        ),
-                                        const PopupMenuItem<int>(
-                                          value: 1,
-                                          child: Text(
-                                            "Rename",
-                                            style: TextStyle(
-                                                color: Colors.white),
-                                          ),
-                                        ),
-                                        const PopupMenuItem<int>(
-                                          value: 2,
-                                          child: Text(
-                                            "Delete",
-                                            style: TextStyle(
-                                                color: Colors.white),
-                                          ),
-                                        ),
-                                      ],
-                                      onSelected: (item) =>
-                                      {
-                                        ImageSelectedItem(
-                                            context, item, docId, data)
-                                      },
-                                    ),
-                                  )
+                                        )
                                       : Container(),
                                   !_sharedPage || currentUid == data['user']
                                       ? Positioned(
-                                    bottom: -5,
-                                    right: -5,
-                                    child: IconButton(
-                                      tooltip: 'Favourite',
-                                      icon: data['favorited']
-                                          ? Icon(Icons.favorite)
-                                          : Icon(Icons.favorite_border),
-                                      onPressed: () async {
-                                        if (!_isLocked) {
-                                          favouriteImage(
-                                              docId, data['favorited']);
-                                        }
-                                      },
-                                    ),
-                                  )
+                                          bottom: -5,
+                                          right: -5,
+                                          child: IconButton(
+                                            tooltip: 'Favourite',
+                                            icon: data['favorited']
+                                                ? Icon(Icons.favorite)
+                                                : Icon(Icons.favorite_border),
+                                            onPressed: () async {
+                                              setState(() {
+                                                getImages(1, document);
+                                              });
+                                              if (!_isLocked) {
+                                                favouriteImage(
+                                                    docId, data['favorited']);
+                                              }
+                                            },
+                                          ),
+                                        )
                                       : Container(),
                                 ],
                               ),
@@ -502,10 +562,103 @@ class _MainPageState extends State<MyHomePage> {
                         children: snapshot.data!.docs
                             .map((DocumentSnapshot document) {
                           Map<String, dynamic> data =
-                          document.data()! as Map<String, dynamic>;
-                          return ListTile(
-                            title: Text(data['name']),
-                            subtitle: Text(data['user']),
+                              document.data()! as Map<String, dynamic>;
+
+                          var docId = document.reference.id;
+
+                          _index = _index + 1;
+
+                          return Container(
+                            color: (_index % 2 == 0)
+                                ? Colors.grey[300]
+                                : Colors.grey[200],
+                            child: Stack(
+                              children: [
+                                Container(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      if (!_isLocked) {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                DetailScreenPage(
+                                                    imageData: data),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    child: ListTile(
+                                      title: Text(data['name']),
+                                      subtitle: Text(data['user']),
+                                    ),
+                                  ),
+                                ),
+                                !_sharedPage || currentUid == data['user']
+                                    ? Positioned(
+                                        top: -5,
+                                        right: -5,
+                                        child: PopupMenuButton(
+                                          icon: const Icon(
+                                              Icons.more_vert_outlined),
+                                          //don't specify icon if you want 3 dot menu
+                                          color: Colors.grey,
+                                          itemBuilder: (context) => [
+                                            PopupMenuItem<int>(
+                                              value: 0,
+                                              child: Text(
+                                                data['shared']
+                                                    ? 'Shared'
+                                                    : 'Share...',
+                                                style: TextStyle(
+                                                    color: Colors.white),
+                                              ),
+                                            ),
+                                            const PopupMenuItem<int>(
+                                              value: 1,
+                                              child: Text(
+                                                "Rename",
+                                                style: TextStyle(
+                                                    color: Colors.white),
+                                              ),
+                                            ),
+                                            const PopupMenuItem<int>(
+                                              value: 2,
+                                              child: Text(
+                                                "Delete",
+                                                style: TextStyle(
+                                                    color: Colors.white),
+                                              ),
+                                            ),
+                                          ],
+                                          onSelected: (item) => {
+                                            ImageSelectedItem(
+                                                context, item, docId, data)
+                                          },
+                                        ),
+                                      )
+                                    : Container(),
+                                !_sharedPage || currentUid == data['user']
+                                    ? Positioned(
+                                        bottom: -5,
+                                        right: -5,
+                                        child: IconButton(
+                                          tooltip: 'Favourite',
+                                          icon: data['favorited']
+                                              ? Icon(Icons.favorite)
+                                              : Icon(Icons.favorite_border),
+                                          onPressed: () async {
+                                            if (!_isLocked) {
+                                              favouriteImage(
+                                                  docId, data['favorited']);
+                                            }
+                                            ;
+                                          },
+                                        ),
+                                      )
+                                    : Container(),
+                              ],
+                            ),
                           );
                         }).toList(),
                       );
@@ -535,10 +688,7 @@ class _MainPageState extends State<MyHomePage> {
           shape: const CircularNotchedRectangle(),
           color: Colors.blue,
           child: IconTheme(
-            data: IconThemeData(color: Theme
-                .of(context)
-                .colorScheme
-                .onPrimary),
+            data: IconThemeData(color: Theme.of(context).colorScheme.onPrimary),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: <Widget>[
@@ -621,14 +771,17 @@ class _AddImagePageState extends State<AddImagePage> {
   TextEditingController nameEditingController = TextEditingController();
 
   var _newImage;
+  var _fileSize;
 
   Future pickImage() async {
     final ImagePicker _picker = ImagePicker();
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
 
     File file = File(image!.path);
+    var size = await file.length();
 
     setState(() {
+      _fileSize = size;
       _newImage = file;
     });
   }
@@ -657,8 +810,9 @@ class _AddImagePageState extends State<AddImagePage> {
 
   // Dylan you should research this method more
   Future<void> addImage(name) async {
+    name = name.toLowerCase();
     DateTime now = DateTime.now();
-    String formattedDate = DateFormat('EEE d-M-y ss:mm:hh aaa').format(now);
+    String formattedDate = DateFormat('ss:mm:kk dd-MM-yyyy').format(now);
     String tempName = name + ' ' + formattedDate;
 
     await uploadImage(tempName);
@@ -674,104 +828,109 @@ class _AddImagePageState extends State<AddImagePage> {
     // Call the user's CollectionReference to add a new user
     return images
         .add({
-      'name': name,
-      'imageName': tempName,
-      'imageURL': imageURL,
-      'user': currentUser,
-      'dateUploaded': formattedDate,
-      'favorited': favorited,
-      'shared': shared,
-    })
+          'name': name,
+          'imageName': tempName,
+          'imageURL': imageURL,
+          'user': currentUser,
+          'dateUploaded': formattedDate,
+          'favorited': favorited,
+          'shared': shared,
+          'size': _fileSize,
+        })
         .then((value) => print("image Added"))
         .catchError((error) => print("Failed to add image: $error"));
+  }
+
+  loader() async {
+    await addImage(
+      nameEditingController.text,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
         home: Scaffold(
-          appBar: AppBar(
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              tooltip: 'Back',
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-            title: Text(widget.title),
-          ),
-          body: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Form(
-                key: _formKey,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: TextFormField(
-                          controller: nameEditingController,
-                          decoration: const InputDecoration(
-                            hintText: 'Enter name',
-                          ),
-                          validator: (String? value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter some text';
-                            }
-                            return null;
-                          },
-                        ),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Back',
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+        title: Text(widget.title),
+      ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          Form(
+            key: _formKey,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: TextFormField(
+                      controller: nameEditingController,
+                      decoration: const InputDecoration(
+                        hintText: 'Enter name',
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            pickImage();
-                          },
-                          child: Row(children: [
-                            Container(
-                              width: 55,
-                              height: 55,
-                              color: Colors.grey,
-                              child: _newImage == null
-                                  ? Text('No Image Selected')
-                                  : Image.file(
-                                _newImage,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            const Spacer(),
-                            const Text('Select Image'),
-                          ]),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            // Validate will return true if the form is valid, or false if
-                            // the form is invalid.
-                            if (_formKey.currentState!.validate()) {
-                              // Process data.
-                              await addImage(
-                                nameEditingController.text,
-                              );
-                              Navigator.pop(context);
-                            }
-                          },
-                          child: const Text('Submit'),
-                        ),
-                      ),
-                    ],
+                      validator: (String? value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter some text';
+                        }
+                        return null;
+                      },
+                    ),
                   ),
-                ),
-              )
-            ],
-          ),
-        ));
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        pickImage();
+                      },
+                      child: Row(children: [
+                        Container(
+                          width: 55,
+                          height: 55,
+                          color: Colors.grey,
+                          child: _newImage == null
+                              ? Text('No Image Selected')
+                              : Image.file(
+                                  _newImage,
+                                  fit: BoxFit.cover,
+                                ),
+                        ),
+                        const Spacer(),
+                        const Text('Select Image'),
+                      ]),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        // Validate will return true if the form is valid, or false if
+                        // the form is invalid.
+                        if (_formKey.currentState!.validate()) {
+                          // Process data.
+                          loader();
+                          Navigator.pop(context);
+                        }
+                      },
+                      child: const Text('Submit'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        ],
+      ),
+    ));
   }
 }
 
@@ -833,46 +992,74 @@ class _DetailScreenPage extends State<DetailScreenPage> {
             Expanded(
               child: ListView(
                 children: [
-                  Container(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Uploaded by: ' + widget.imageData['user'],
-                        style: TextStyle(
-                          fontSize: 20,
+                  Padding(
+                    padding: EdgeInsets.all(5),
+                    child: Container(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Uploaded by: ' + widget.imageData['user'],
+                          style: TextStyle(
+                            fontSize: 17,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  Container(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Uploaded at: ' + widget.imageData['dateUploaded'],
-                        style: TextStyle(
-                          fontSize: 20,
+                  Padding(
+                    padding: EdgeInsets.all(5),
+                    child: Container(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Uploaded at: ' + widget.imageData['dateUploaded'],
+                          style: TextStyle(
+                            fontSize: 17,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  Container(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Favorited: ' + FavoritedCheck(),
-                        style: TextStyle(
-                          fontSize: 20,
+                  Padding(
+                    padding: EdgeInsets.all(5),
+                    child: Container(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'File Size: ' +
+                              (widget.imageData['size'] / 1000).toString() +
+                              ' KB',
+                          style: TextStyle(
+                            fontSize: 17,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  Container(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Shared: ' + SharedCheck(),
-                        style: TextStyle(
-                          fontSize: 20,
+                  Padding(
+                    padding: EdgeInsets.all(5),
+                    child: Container(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Favorited: ' + FavoritedCheck(),
+                          style: TextStyle(
+                            fontSize: 17,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.all(5),
+                    child: Container(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Shared: ' + SharedCheck(),
+                          style: TextStyle(
+                            fontSize: 17,
+                          ),
                         ),
                       ),
                     ),
@@ -932,9 +1119,9 @@ class _UserSharingPage extends State<UserSharingPage> {
 
             return ListView(
               children: snapshot.data!.docs.map(
-                    (DocumentSnapshot document) {
+                (DocumentSnapshot document) {
                   Map<String, dynamic> data =
-                  document.data()! as Map<String, dynamic>;
+                      document.data()! as Map<String, dynamic>;
                   return ListTile(
                     title: Text(data['identifier']),
                     subtitle: Text(data['user']),
