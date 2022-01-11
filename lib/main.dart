@@ -38,7 +38,6 @@ class MyApp extends StatelessWidget {
 }
 
 class AuthGate extends StatelessWidget {
-  // https://firebase.flutter.dev/docs/ui/auth
   const AuthGate({Key? key}) : super(key: key);
 
   @override
@@ -60,7 +59,6 @@ class AuthGate extends StatelessWidget {
     );
   }
 }
-// https://www.youtube.com/watch?v=1xPMbwOFa9I
 
 Future signout() async {
   await FirebaseAuth.instance.signOut();
@@ -73,10 +71,3 @@ Future<void> userSetup() async {
   users.add({'uid': uid});
   return;
 }
-
-// https://stackoverflow.com/questions/58986473/i-have-this-problem-in-flutter-when-i-called-a-function-futurestring-cant
-// https://api.flutter.dev/flutter/widgets/FutureBuilder-class.html
-// https://stackoverflow.com/questions/59587409/how-to-put-json-data-from-server-with-gridview-flutter
-// https://firebase.flutter.dev/docs/firestore/usage/
-
-// https://www.youtube.com/watch?v=vYBc7Le5G6s
