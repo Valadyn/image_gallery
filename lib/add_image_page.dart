@@ -107,6 +107,7 @@ class _AddImagePageState extends State<AddImagePage> {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
+          backgroundColor: Colors.blueGrey[900],
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             tooltip: 'Back',
@@ -151,7 +152,7 @@ class _AddImagePageState extends State<AddImagePage> {
                           Container(
                             width: 55,
                             height: 55,
-                            color: Colors.grey,
+                            color: Colors.blueGrey,
                             child: _newImage == null
                                 ? const Text('No Image Selected')
                                 : Image.file(

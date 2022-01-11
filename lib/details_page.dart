@@ -33,6 +33,7 @@ class _DetailScreenPage extends State<DetailScreenPage> {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
+          backgroundColor: Colors.blueGrey[900],
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             tooltip: 'Back',

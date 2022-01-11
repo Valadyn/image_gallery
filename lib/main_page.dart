@@ -111,7 +111,7 @@ class _MainPageState extends State<MyHomePage> {
         .doc(docId)
         .delete()
         .then((value) =>
-            FirebaseStorage.instance.refFromURL(imageData['imageURL']).delete())
+        FirebaseStorage.instance.refFromURL(imageData['imageURL']).delete())
         .catchError((error) => print("Failed to delete Image: $error"));
   }
 
@@ -123,8 +123,8 @@ class _MainPageState extends State<MyHomePage> {
         .catchError((error) => print("Failed to update: $error"));
   }
 
-  Future<void> _searchNameInputDialog(
-      BuildContext context, var docId, String currentName) async {
+  Future<void> _searchNameInputDialog(BuildContext context, var docId,
+      String currentName) async {
     _textFieldController.text = '';
 
     return showDialog(
@@ -156,8 +156,8 @@ class _MainPageState extends State<MyHomePage> {
     );
   }
 
-  void _imageSelectedItem(
-      BuildContext context, item, var docId, var imageData) {
+  void _imageSelectedItem(BuildContext context, item, var docId,
+      var imageData) {
     if (!_isLocked) {
       switch (item) {
         case 0:
@@ -179,8 +179,9 @@ class _MainPageState extends State<MyHomePage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => SettingsPage(
-                title: 'Settings', settingValues: widget.settingValues),
+            builder: (context) =>
+                SettingsPage(
+                    title: 'Settings', settingValues: widget.settingValues),
           ),
         );
         break;
@@ -270,74 +271,77 @@ class _MainPageState extends State<MyHomePage> {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-            leading: PopupMenuButton<int>(
-              icon: const Icon(Icons.menu),
-              //don't specify icon if you want 3 dot menu
-              color: Colors.grey,
-              itemBuilder: (context) => [
-                const PopupMenuItem<int>(
-                  value: 0,
-                  child: Text(
-                    "Settings",
-                    style: TextStyle(color: Colors.white),
-                  ),
+          backgroundColor: Colors.blueGrey[900],
+          leading: PopupMenuButton<int>(
+            icon: const Icon(Icons.menu),
+            //don't specify icon if you want 3 dot menu
+            color: Colors.blueGrey,
+            itemBuilder: (context) =>
+            [
+              const PopupMenuItem<int>(
+                value: 0,
+                child: Text(
+                  "Settings",
+                  style: TextStyle(color: Colors.white),
                 ),
-                const PopupMenuItem<int>(
-                  value: 1,
-                  child: Text(
-                    "Search",
-                    style: TextStyle(color: Colors.white),
-                  ),
+              ),
+              const PopupMenuItem<int>(
+                value: 1,
+                child: Text(
+                  "Search",
+                  style: TextStyle(color: Colors.white),
                 ),
-                const PopupMenuDivider(),
-                PopupMenuItem<int>(
-                    value: 2,
-                    child: Row(
-                      children: const [
-                        Icon(
-                          Icons.logout,
-                          color: Colors.white,
-                        ),
-                        SizedBox(
-                          width: 7,
-                        ),
-                        Text(
-                          "Logout",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ],
-                    )),
-              ],
-              onSelected: (item) => {_menuSelectedItem(context, item)},
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem<int>(
+                  value: 2,
+                  child: Row(
+                    children: const [
+                      Icon(
+                        Icons.logout,
+                        color: Colors.white,
+                      ),
+                      SizedBox(
+                        width: 7,
+                      ),
+                      Text(
+                        "Logout",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  )),
+            ],
+            onSelected: (item) => {_menuSelectedItem(context, item)},
+          ),
+          title: Text(widget.title),
+          actions: <Widget>[
+            IconButton(
+              icon: const Icon(Icons.grid_view_outlined),
+              tooltip: 'Grid Display',
+              onPressed: () {
+                if (!_isLocked) {
+                  _gridViewOn();
+                }
+              },
             ),
-            title: Text(widget.title),
-            actions: <Widget>[
-              IconButton(
-                icon: const Icon(Icons.grid_view_outlined),
-                tooltip: 'Grid Display',
-                onPressed: () {
-                  if (!_isLocked) {
-                    _gridViewOn();
-                  }
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.sort_outlined),
-                tooltip: 'List Display',
-                onPressed: () {
-                  if (!_isLocked) {
-                    _gridViewOff();
-                  }
-                },
-              ),
-              IconButton(
-                icon: _isLocked
-                    ? const Icon(Icons.lock)
-                    : const Icon(Icons.lock_open),
-                tooltip: 'Lock',
-                onPressed: _lockSwitch,
-              ),
-            ]),
+            IconButton(
+              icon: const Icon(Icons.sort_outlined),
+              tooltip: 'List Display',
+              onPressed: () {
+                if (!_isLocked) {
+                  _gridViewOff();
+                }
+              },
+            ),
+            IconButton(
+              icon: _isLocked
+                  ? const Icon(Icons.lock)
+                  : const Icon(Icons.lock_open),
+              tooltip: 'Lock',
+              onPressed: _lockSwitch,
+            ),
+          ],
+        ),
         body: Column(
           children: <Widget>[
             Visibility(
@@ -387,15 +391,18 @@ class _MainPageState extends State<MyHomePage> {
                           crossAxisCount: _gridViewCount,
                         ),
                         children: snapshot.data!.docs.map(
-                          (DocumentSnapshot document) {
+                              (DocumentSnapshot document) {
                             Map<String, dynamic> data =
-                                document.data()! as Map<String, dynamic>;
+                            document.data()! as Map<String, dynamic>;
 
                             var docId = document.reference.id;
 
                             return Container(
                               margin: const EdgeInsets.all(5),
-                              color: Theme.of(context).colorScheme.primary,
+                              color: Theme
+                                  .of(context)
+                                  .colorScheme
+                                  .primary,
                               child: Stack(
                                 children: [
                                   Container(
@@ -411,7 +418,7 @@ class _MainPageState extends State<MyHomePage> {
                                                       imageData: data),
                                             ),
                                           );
-                                        }
+                                        };
                                       },
                                       child: Image.network(
                                         data['imageURL'],
@@ -421,66 +428,68 @@ class _MainPageState extends State<MyHomePage> {
                                   ),
                                   !_sharedPage || currentUid == data['user']
                                       ? Positioned(
-                                          top: -5,
-                                          right: -5,
-                                          child: PopupMenuButton(
-                                            icon: const Icon(
-                                                Icons.more_vert_outlined),
-                                            //don't specify icon if you want 3 dot menu
-                                            color: Colors.grey,
-                                            itemBuilder: (context) => [
-                                              PopupMenuItem<int>(
-                                                value: 0,
-                                                child: Text(
-                                                  data['shared']
-                                                      ? 'Shared'
-                                                      : 'Share...',
-                                                  style: const TextStyle(
-                                                      color: Colors.white),
-                                                ),
-                                              ),
-                                              const PopupMenuItem<int>(
-                                                value: 1,
-                                                child: Text(
-                                                  "Rename",
-                                                  style: TextStyle(
-                                                      color: Colors.white),
-                                                ),
-                                              ),
-                                              const PopupMenuItem<int>(
-                                                value: 2,
-                                                child: Text(
-                                                  "Delete",
-                                                  style: TextStyle(
-                                                      color: Colors.white),
-                                                ),
-                                              ),
-                                            ],
-                                            onSelected: (item) => {
-                                              _imageSelectedItem(
-                                                  context, item, docId, data)
-                                            },
+                                    top: -5,
+                                    right: -5,
+                                    child: PopupMenuButton(
+                                      icon: const Icon(
+                                          Icons.more_vert_outlined),
+                                      //don't specify icon if you want 3 dot menu
+                                      color: Colors.blueGrey,
+                                      itemBuilder: (context) =>
+                                      [
+                                        PopupMenuItem<int>(
+                                          value: 0,
+                                          child: Text(
+                                            data['shared']
+                                                ? 'Shared'
+                                                : 'Share...',
+                                            style: const TextStyle(
+                                                color: Colors.white),
                                           ),
-                                        )
+                                        ),
+                                        const PopupMenuItem<int>(
+                                          value: 1,
+                                          child: Text(
+                                            "Rename",
+                                            style: TextStyle(
+                                                color: Colors.white),
+                                          ),
+                                        ),
+                                        const PopupMenuItem<int>(
+                                          value: 2,
+                                          child: Text(
+                                            "Delete",
+                                            style: TextStyle(
+                                                color: Colors.white),
+                                          ),
+                                        ),
+                                      ],
+                                      onSelected: (item) =>
+                                      {
+                                        _imageSelectedItem(
+                                            context, item, docId, data)
+                                      },
+                                    ),
+                                  )
                                       : Container(),
                                   !_sharedPage || currentUid == data['user']
                                       ? Positioned(
-                                          bottom: -5,
-                                          right: -5,
-                                          child: IconButton(
-                                            tooltip: 'Favourite',
-                                            icon: data['favorited']
-                                                ? const Icon(Icons.favorite)
-                                                : const Icon(
-                                                    Icons.favorite_border),
-                                            onPressed: () async {
-                                              if (!_isLocked) {
-                                                favouriteImage(
-                                                    docId, data['favorited']);
-                                              }
-                                            },
-                                          ),
-                                        )
+                                    bottom: -5,
+                                    right: -5,
+                                    child: IconButton(
+                                      tooltip: 'Favourite',
+                                      icon: data['favorited']
+                                          ? const Icon(Icons.favorite)
+                                          : const Icon(
+                                          Icons.favorite_border),
+                                      onPressed: () async {
+                                        if (!_isLocked) {
+                                          favouriteImage(
+                                              docId, data['favorited']);
+                                        };
+                                      },
+                                    ),
+                                  )
                                       : Container(),
                                 ],
                               ),
@@ -493,7 +502,7 @@ class _MainPageState extends State<MyHomePage> {
                         children: snapshot.data!.docs
                             .map((DocumentSnapshot document) {
                           Map<String, dynamic> data =
-                              document.data()! as Map<String, dynamic>;
+                          document.data()! as Map<String, dynamic>;
 
                           var docId = document.reference.id;
 
@@ -501,8 +510,8 @@ class _MainPageState extends State<MyHomePage> {
 
                           return Container(
                             color: (_index % 2 == 0)
-                                ? Colors.grey[300]
-                                : Colors.grey[200],
+                                ? Colors.blueGrey[300]
+                                : Colors.blueGrey[200],
                             child: Stack(
                               children: [
                                 GestureDetector(
@@ -515,7 +524,7 @@ class _MainPageState extends State<MyHomePage> {
                                               DetailScreenPage(imageData: data),
                                         ),
                                       );
-                                    }
+                                    };
                                   },
                                   child: ListTile(
                                     title: Text(
@@ -525,73 +534,75 @@ class _MainPageState extends State<MyHomePage> {
                                 ),
                                 !_sharedPage || currentUid == data['user']
                                     ? Positioned(
-                                        top: -5,
-                                        right: -5,
-                                        child: PopupMenuButton(
-                                          icon: const Icon(
-                                              Icons.more_vert_outlined),
-                                          //don't specify icon if you want 3 dot menu
-                                          color: Colors.grey,
-                                          itemBuilder: (context) => [
-                                            PopupMenuItem<int>(
-                                              value: 0,
-                                              child: Text(
-                                                data['shared']
-                                                    ? 'Shared'
-                                                    : 'Share...',
-                                                style: const TextStyle(
-                                                    color: Colors.white),
-                                              ),
-                                            ),
-                                            const PopupMenuItem<int>(
-                                              value: 1,
-                                              child: Text(
-                                                "Rename",
-                                                style: TextStyle(
-                                                    color: Colors.white),
-                                              ),
-                                            ),
-                                            const PopupMenuItem<int>(
-                                              value: 2,
-                                              child: Text(
-                                                "Delete",
-                                                style: TextStyle(
-                                                    color: Colors.white),
-                                              ),
-                                            ),
-                                          ],
-                                          onSelected: (item) => {
-                                            _imageSelectedItem(
-                                                context, item, docId, data)
-                                          },
+                                  top: -5,
+                                  right: -5,
+                                  child: PopupMenuButton(
+                                    icon: const Icon(
+                                        Icons.more_vert_outlined),
+                                    //don't specify icon if you want 3 dot menu
+                                    color: Colors.blueGrey,
+                                    itemBuilder: (context) =>
+                                    [
+                                      PopupMenuItem<int>(
+                                        value: 0,
+                                        child: Text(
+                                          data['shared']
+                                              ? 'Shared'
+                                              : 'Share...',
+                                          style: const TextStyle(
+                                              color: Colors.white),
                                         ),
-                                      )
+                                      ),
+                                      const PopupMenuItem<int>(
+                                        value: 1,
+                                        child: Text(
+                                          "Rename",
+                                          style: TextStyle(
+                                              color: Colors.white),
+                                        ),
+                                      ),
+                                      const PopupMenuItem<int>(
+                                        value: 2,
+                                        child: Text(
+                                          "Delete",
+                                          style: TextStyle(
+                                              color: Colors.white),
+                                        ),
+                                      ),
+                                    ],
+                                    onSelected: (item) =>
+                                    {
+                                      _imageSelectedItem(
+                                          context, item, docId, data)
+                                    },
+                                  ),
+                                )
                                     : Container(),
                                 !_sharedPage || currentUid == data['user']
                                     ? Positioned(
-                                        bottom: -5,
-                                        right: -5,
-                                        child: IconButton(
-                                          tooltip: 'Favourite',
-                                          icon: data['favorited']
-                                              ? const Icon(Icons.favorite)
-                                              : const Icon(
-                                                  Icons.favorite_border),
-                                          onPressed: () async {
-                                            if (!_isLocked) {
-                                              favouriteImage(
-                                                  docId, data['favorited']);
-                                            }
-                                          },
-                                        ),
-                                      )
+                                  bottom: -5,
+                                  right: -5,
+                                  child: IconButton(
+                                    tooltip: 'Favourite',
+                                    icon: data['favorited']
+                                        ? const Icon(Icons.favorite)
+                                        : const Icon(
+                                        Icons.favorite_border),
+                                    onPressed: () async {
+                                      if (!_isLocked) {
+                                        favouriteImage(
+                                            docId, data['favorited']);
+                                      };
+                                    },
+                                  ),
+                                )
                                     : Container(),
                               ],
                             ),
                           );
                         }).toList(),
                       );
-                    }
+                    };
                   },
                 ),
               ),
@@ -600,6 +611,7 @@ class _MainPageState extends State<MyHomePage> {
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
         floatingActionButton: FloatingActionButton(
+          backgroundColor: Colors.blueGrey[900],
           tooltip: 'Add Photo',
           onPressed: () {
             if (!_isLocked) {
@@ -609,15 +621,18 @@ class _MainPageState extends State<MyHomePage> {
                   builder: (context) => const AddImagePage(title: 'Add Image'),
                 ),
               );
-            }
+            };
           },
           child: const Icon(Icons.add_a_photo_outlined),
         ),
         bottomNavigationBar: BottomAppBar(
           shape: const CircularNotchedRectangle(),
-          color: Colors.blue,
+          color: Colors.blueGrey[900],
           child: IconTheme(
-            data: IconThemeData(color: Theme.of(context).colorScheme.onPrimary),
+            data: IconThemeData(color: Theme
+                .of(context)
+                .colorScheme
+                .onPrimary),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: <Widget>[
@@ -712,6 +727,7 @@ class _SettingsPage extends State<SettingsPage> {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
+          backgroundColor: Colors.blueGrey[900],
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             tooltip: 'Back',
