@@ -8,10 +8,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import "main_page.dart";
 
-
-
-
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -71,14 +67,6 @@ Future<void> userSetup() async {
   users.add({'uid': uid});
   return;
 }
-
-
-
-
-
-
-
-
 
 // https://stackoverflow.com/questions/58986473/i-have-this-problem-in-flutter-when-i-called-a-function-futurestring-cant
 // https://api.flutter.dev/flutter/widgets/FutureBuilder-class.html

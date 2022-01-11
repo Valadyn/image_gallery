@@ -2,10 +2,6 @@ import 'dart:core';
 import 'package:flutter/material.dart';
 import "string_extension.dart";
 
-
-
-
-
 class DetailScreenPage extends StatefulWidget {
   const DetailScreenPage({Key? key, required this.imageData}) : super(key: key);
 

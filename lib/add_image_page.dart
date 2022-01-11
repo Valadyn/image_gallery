@@ -8,10 +8,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:intl/intl.dart';
 
-
-
-
-
 class AddImagePage extends StatefulWidget {
   const AddImagePage({Key? key, required this.title}) : super(key: key);
 
@@ -87,15 +83,15 @@ class _AddImagePageState extends State<AddImagePage> {
     // Call the user's CollectionReference to add a new user
     return images
         .add({
-      'name': name,
-      'imageName': tempName,
-      'imageURL': imageURL,
-      'user': currentUser,
-      'dateUploaded': formattedDate,
-      'favorited': favorited,
-      'shared': shared,
-      'size': _fileSize,
-    })
+          'name': name,
+          'imageName': tempName,
+          'imageURL': imageURL,
+          'user': currentUser,
+          'dateUploaded': formattedDate,
+          'favorited': favorited,
+          'shared': shared,
+          'size': _fileSize,
+        })
         .then((value) => print("image Added"))
         .catchError((error) => print("Failed to add image: $error"));
   }
@@ -159,9 +155,9 @@ class _AddImagePageState extends State<AddImagePage> {
                             child: _newImage == null
                                 ? const Text('No Image Selected')
                                 : Image.file(
-                              _newImage,
-                              fit: BoxFit.cover,
-                            ),
+                                    _newImage,
+                                    fit: BoxFit.cover,
+                                  ),
                           ),
                           const Spacer(),
                           const Text('Select Image'),
