@@ -25,12 +25,12 @@ class MyApp extends StatelessWidget {
       title: 'Dylan Was Here',
       theme: ThemeData(
         primarySwatch: Colors.blueGrey,
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.blueGrey[900],
       ),
       darkTheme: ThemeData(
         brightness: Brightness.dark,
         primarySwatch: Colors.blueGrey,
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.blueGrey[900],
       ),
       home: const AuthGate(),
     );

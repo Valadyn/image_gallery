@@ -13,7 +13,7 @@ class MyHomePage extends StatefulWidget {
   MyHomePage({Key? key, required this.title}) : super(key: key);
 
   final String title;
-  final SettingValues settingValues = SettingValues(false, false);
+  final SettingValues settingValues = SettingValues(false, false, false);
 
   @override
   State<MyHomePage> createState() => _MainPageState();
@@ -109,7 +109,7 @@ class _MainPageState extends State<MyHomePage> {
         .doc(docId)
         .delete()
         .then((value) =>
-        FirebaseStorage.instance.refFromURL(imageData['imageURL']).delete())
+            FirebaseStorage.instance.refFromURL(imageData['imageURL']).delete())
         .catchError((error) => print("Failed to delete Image: $error"));
   }
 
@@ -121,8 +121,8 @@ class _MainPageState extends State<MyHomePage> {
         .catchError((error) => print("Failed to update: $error"));
   }
 
-  Future<void> _searchNameInputDialog(BuildContext context, var docId,
-      String currentName) async {
+  Future<void> _searchNameInputDialog(
+      BuildContext context, var docId, String currentName) async {
     _textFieldController.text = '';
 
     return showDialog(
@@ -154,8 +154,8 @@ class _MainPageState extends State<MyHomePage> {
     );
   }
 
-  void _imageSelectedItem(BuildContext context, item, var docId,
-      var imageData) {
+  void _imageSelectedItem(
+      BuildContext context, item, var docId, var imageData) {
     if (!_isLocked) {
       switch (item) {
         case 0:
@@ -171,17 +171,19 @@ class _MainPageState extends State<MyHomePage> {
     }
   }
 
-  void _menuSelectedItem(BuildContext context, item) {
+  Future<void> _menuSelectedItem(BuildContext context, item) async {
     switch (item) {
       case 0:
-        Navigator.push(
+        await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                SettingsPage(
-                    title: 'Settings', settingValues: widget.settingValues),
+            builder: (context) => SettingsPage(
+                title: 'Settings', settingValues: widget.settingValues),
           ),
         );
+        setState(() {
+          getImages();
+        });
         break;
       case 1:
         showSearchBar();
@@ -198,65 +200,140 @@ class _MainPageState extends State<MyHomePage> {
     String currentUid = (auth.currentUser as User).uid;
     String _searchInput = nameSearchingController.text.toLowerCase();
 
-    if (nameSearchingController.text != '' &&
-        _sharedPage &&
-        widget.settingValues._orderSwitch) {
-      _imageStream = FirebaseFirestore.instance
-          .collection('images')
-          .where('shared', isEqualTo: true)
-          .where('name', isGreaterThanOrEqualTo: _searchInput)
-          .where('name', isLessThan: _searchInput + 'z')
-          .orderBy('dateUploaded', descending: widget.settingValues._ascDesc)
-          .snapshots(includeMetadataChanges: true);
-    } else if (nameSearchingController.text != '' && _sharedPage) {
-      _imageStream = FirebaseFirestore.instance
-          .collection('images')
-          .where('shared', isEqualTo: true)
-          .where('name', isGreaterThanOrEqualTo: _searchInput)
-          .where('name', isLessThan: _searchInput + 'z')
-          .orderBy('name', descending: widget.settingValues._ascDesc)
-          .snapshots(includeMetadataChanges: true);
-    } else if (nameSearchingController.text != '' &&
-        widget.settingValues._orderSwitch) {
-      _imageStream = FirebaseFirestore.instance
-          .collection('images')
-          .where('user', isEqualTo: currentUid)
-          .where('name', isGreaterThanOrEqualTo: _searchInput)
-          .where('name', isLessThan: _searchInput + 'z')
-          .orderBy('dateUploaded', descending: widget.settingValues._ascDesc)
-          .snapshots(includeMetadataChanges: true);
-    } else if (nameSearchingController.text != '') {
-      _imageStream = FirebaseFirestore.instance
-          .collection('images')
-          .where('user', isEqualTo: currentUid)
-          .where('name', isGreaterThanOrEqualTo: _searchInput)
-          .where('name', isLessThan: _searchInput + 'z')
-          .orderBy('name', descending: widget.settingValues._ascDesc)
-          .snapshots(includeMetadataChanges: true);
-    } else if (_sharedPage && widget.settingValues._orderSwitch) {
-      _imageStream = FirebaseFirestore.instance
-          .collection('images')
-          .where('shared', isEqualTo: true)
-          .orderBy('dateUploaded', descending: widget.settingValues._ascDesc)
-          .snapshots(includeMetadataChanges: true);
-    } else if (_sharedPage) {
-      _imageStream = FirebaseFirestore.instance
-          .collection('images')
-          .where('shared', isEqualTo: true)
-          .orderBy('name', descending: widget.settingValues._ascDesc)
-          .snapshots(includeMetadataChanges: true);
-    } else if (widget.settingValues._orderSwitch) {
-      _imageStream = FirebaseFirestore.instance
-          .collection('images')
-          .where('user', isEqualTo: currentUid)
-          .orderBy('dateUploaded', descending: widget.settingValues._ascDesc)
-          .snapshots(includeMetadataChanges: true);
+    bool favSwitch = widget.settingValues._favSwitch;
+    bool orderSwitch = widget.settingValues._orderSwitch;
+    bool ascDesc = widget.settingValues._ascDesc;
+
+    if (_sharedPage) {
+      // Is Shared
+      if (orderSwitch) {
+        // Is Ordered By Date
+        if (nameSearchingController.text != '') {
+          // Is Using Search Bar
+          _imageStream = FirebaseFirestore.instance
+              .collection('images')
+              .where('shared', isEqualTo: true)
+              .where('name', isGreaterThanOrEqualTo: _searchInput)
+              .where('name', isLessThan: _searchInput + 'z')
+              .orderBy('dateUploaded', descending: ascDesc)
+              .snapshots(includeMetadataChanges: true);
+        } else {
+          // Is NOT Using Search Bar
+          _imageStream = FirebaseFirestore.instance
+              .collection('images')
+              .where('shared', isEqualTo: true)
+              .orderBy('dateUploaded', descending: ascDesc)
+              .snapshots(includeMetadataChanges: true);
+        }
+      } else {
+        // Is NOT Ordered By Date
+        if (nameSearchingController.text != '') {
+          // Is Using Search Bar
+          _imageStream = FirebaseFirestore.instance
+              .collection('images')
+              .where('shared', isEqualTo: true)
+              .where('name', isGreaterThanOrEqualTo: _searchInput)
+              .where('name', isLessThan: _searchInput + 'z')
+              .orderBy('name', descending: ascDesc)
+              .snapshots(includeMetadataChanges: true);
+        } else {
+          // Is NOT Using Search Bar
+          _imageStream = FirebaseFirestore.instance
+              .collection('images')
+              .where('shared', isEqualTo: true)
+              .orderBy('name', descending: ascDesc)
+              .snapshots(includeMetadataChanges: true);
+        }
+      }
     } else {
-      _imageStream = FirebaseFirestore.instance
-          .collection('images')
-          .where('user', isEqualTo: currentUid)
-          .orderBy('name', descending: widget.settingValues._ascDesc)
-          .snapshots(includeMetadataChanges: true);
+      // Is NOT Shared
+      if (favSwitch) {
+        // Is Favorited
+        if (orderSwitch) {
+          // Is Ordered By Date
+          if (nameSearchingController.text != '') {
+            // Is Using Search Bar
+            _imageStream = FirebaseFirestore.instance
+                .collection('images')
+                .where('user', isEqualTo: currentUid)
+                .where('favorited', isEqualTo: true)
+                .where('name', isGreaterThanOrEqualTo: _searchInput)
+                .where('name', isLessThan: _searchInput + 'z')
+                .orderBy('dateUploaded', descending: ascDesc)
+                .snapshots(includeMetadataChanges: true);
+          } else {
+            // Is NOT Using Search Bar
+            _imageStream = FirebaseFirestore.instance
+                .collection('images')
+                .where('user', isEqualTo: currentUid)
+                .where('favorited', isEqualTo: true)
+                .orderBy('dateUploaded', descending: ascDesc)
+                .snapshots(includeMetadataChanges: true);
+          }
+        } else {
+          // Is NOT Ordered By Date
+          if (nameSearchingController.text != '') {
+            // Is Using Search Bar
+            _imageStream = FirebaseFirestore.instance
+                .collection('images')
+                .where('user', isEqualTo: currentUid)
+                .where('favorited', isEqualTo: true)
+                .where('name', isGreaterThanOrEqualTo: _searchInput)
+                .where('name', isLessThan: _searchInput + 'z')
+                .orderBy('name', descending: ascDesc)
+                .snapshots(includeMetadataChanges: true);
+          } else {
+            // Is NOT Using Search Bar
+            _imageStream = FirebaseFirestore.instance
+                .collection('images')
+                .where('user', isEqualTo: currentUid)
+                .where('favorited', isEqualTo: true)
+                .orderBy('name', descending: ascDesc)
+                .snapshots(includeMetadataChanges: true);
+          }
+        }
+      } else {
+        // Is NOT Favorited
+        if (orderSwitch) {
+          // Is Ordered By Date
+          if (nameSearchingController.text != '') {
+            // Is Using Search Bar
+            _imageStream = FirebaseFirestore.instance
+                .collection('images')
+                .where('user', isEqualTo: currentUid)
+                .where('name', isGreaterThanOrEqualTo: _searchInput)
+                .where('name', isLessThan: _searchInput + 'z')
+                .orderBy('dateUploaded', descending: ascDesc)
+                .snapshots(includeMetadataChanges: true);
+          } else {
+            // Is NOT Using Search Bar
+            _imageStream = FirebaseFirestore.instance
+                .collection('images')
+                .where('user', isEqualTo: currentUid)
+                .orderBy('dateUploaded', descending: ascDesc)
+                .snapshots(includeMetadataChanges: true);
+          }
+        } else {
+          // Is NOT Ordered By Date
+          if (nameSearchingController.text != '') {
+            // Is Using Search Bar
+            _imageStream = FirebaseFirestore.instance
+                .collection('images')
+                .where('user', isEqualTo: currentUid)
+                .where('name', isGreaterThanOrEqualTo: _searchInput)
+                .where('name', isLessThan: _searchInput + 'z')
+                .orderBy('name', descending: ascDesc)
+                .snapshots(includeMetadataChanges: true);
+          } else {
+            // Is NOT Using Search Bar
+            _imageStream = FirebaseFirestore.instance
+                .collection('images')
+                .where('user', isEqualTo: currentUid)
+                .orderBy('name', descending: ascDesc)
+                .snapshots(includeMetadataChanges: true);
+          }
+        }
+      }
     }
   }
 
@@ -264,7 +341,9 @@ class _MainPageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     String currentUid = (auth.currentUser as User).uid;
 
-    getImages();
+    setState(() {
+      getImages();
+    });
 
     return MaterialApp(
       home: Scaffold(
@@ -274,8 +353,7 @@ class _MainPageState extends State<MyHomePage> {
             icon: const Icon(Icons.menu),
             //don't specify icon if you want 3 dot menu
             color: Colors.blueGrey,
-            itemBuilder: (context) =>
-            [
+            itemBuilder: (context) => [
               const PopupMenuItem<int>(
                 value: 0,
                 child: Text(
@@ -373,12 +451,14 @@ class _MainPageState extends State<MyHomePage> {
                       return const Text('Something went wrong');
                     }
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const SizedBox(
-                        width: 50,
-                        height: 50,
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            semanticsLabel: 'Linear progress indicator',
+                      return const Center(
+                        child: SizedBox(
+                          width: 50,
+                          height: 50,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              semanticsLabel: 'Linear progress indicator',
+                            ),
                           ),
                         ),
                       );
@@ -389,18 +469,15 @@ class _MainPageState extends State<MyHomePage> {
                           crossAxisCount: _gridViewCount,
                         ),
                         children: snapshot.data!.docs.map(
-                              (DocumentSnapshot document) {
+                          (DocumentSnapshot document) {
                             Map<String, dynamic> data =
-                            document.data()! as Map<String, dynamic>;
+                                document.data()! as Map<String, dynamic>;
 
                             var docId = document.reference.id;
 
                             return Container(
                               margin: const EdgeInsets.all(5),
-                              color: Theme
-                                  .of(context)
-                                  .colorScheme
-                                  .primary,
+                              color: Colors.blueGrey[900],
                               child: Stack(
                                 children: [
                                   Container(
@@ -426,68 +503,66 @@ class _MainPageState extends State<MyHomePage> {
                                   ),
                                   !_sharedPage || currentUid == data['user']
                                       ? Positioned(
-                                    top: -5,
-                                    right: -5,
-                                    child: PopupMenuButton(
-                                      icon: const Icon(
-                                          Icons.more_vert_outlined),
-                                      //don't specify icon if you want 3 dot menu
-                                      color: Colors.blueGrey,
-                                      itemBuilder: (context) =>
-                                      [
-                                        PopupMenuItem<int>(
-                                          value: 0,
-                                          child: Text(
-                                            data['shared']
-                                                ? 'Shared'
-                                                : 'Share...',
-                                            style: const TextStyle(
-                                                color: Colors.white),
+                                          top: -5,
+                                          right: -5,
+                                          child: PopupMenuButton(
+                                            icon: const Icon(
+                                                Icons.more_vert_outlined),
+                                            //don't specify icon if you want 3 dot menu
+                                            color: Colors.blueGrey,
+                                            itemBuilder: (context) => [
+                                              PopupMenuItem<int>(
+                                                value: 0,
+                                                child: Text(
+                                                  data['shared']
+                                                      ? 'Shared'
+                                                      : 'Share...',
+                                                  style: const TextStyle(
+                                                      color: Colors.white),
+                                                ),
+                                              ),
+                                              const PopupMenuItem<int>(
+                                                value: 1,
+                                                child: Text(
+                                                  "Rename",
+                                                  style: TextStyle(
+                                                      color: Colors.white),
+                                                ),
+                                              ),
+                                              const PopupMenuItem<int>(
+                                                value: 2,
+                                                child: Text(
+                                                  "Delete",
+                                                  style: TextStyle(
+                                                      color: Colors.white),
+                                                ),
+                                              ),
+                                            ],
+                                            onSelected: (item) => {
+                                              _imageSelectedItem(
+                                                  context, item, docId, data)
+                                            },
                                           ),
-                                        ),
-                                        const PopupMenuItem<int>(
-                                          value: 1,
-                                          child: Text(
-                                            "Rename",
-                                            style: TextStyle(
-                                                color: Colors.white),
-                                          ),
-                                        ),
-                                        const PopupMenuItem<int>(
-                                          value: 2,
-                                          child: Text(
-                                            "Delete",
-                                            style: TextStyle(
-                                                color: Colors.white),
-                                          ),
-                                        ),
-                                      ],
-                                      onSelected: (item) =>
-                                      {
-                                        _imageSelectedItem(
-                                            context, item, docId, data)
-                                      },
-                                    ),
-                                  )
+                                        )
                                       : Container(),
                                   !_sharedPage || currentUid == data['user']
                                       ? Positioned(
-                                    bottom: -5,
-                                    right: -5,
-                                    child: IconButton(
-                                      tooltip: 'Favourite',
-                                      icon: data['favorited']
-                                          ? const Icon(Icons.favorite)
-                                          : const Icon(
-                                          Icons.favorite_border),
-                                      onPressed: () async {
-                                        if (!_isLocked) {
-                                          favouriteImage(
-                                              docId, data['favorited']);
-                                        }
-                                      },
-                                    ),
-                                  )
+                                          bottom: -5,
+                                          right: -5,
+                                          child: IconButton(
+                                            tooltip: 'Favourite',
+                                            icon: data['favorited']
+                                                ? const Icon(Icons.favorite)
+                                                : const Icon(
+                                                    Icons.favorite_border),
+                                            onPressed: () async {
+                                              if (!_isLocked) {
+                                                favouriteImage(
+                                                    docId, data['favorited']);
+                                              }
+                                            },
+                                          ),
+                                        )
                                       : Container(),
                                 ],
                               ),
@@ -500,7 +575,7 @@ class _MainPageState extends State<MyHomePage> {
                         children: snapshot.data!.docs
                             .map((DocumentSnapshot document) {
                           Map<String, dynamic> data =
-                          document.data()! as Map<String, dynamic>;
+                              document.data()! as Map<String, dynamic>;
 
                           var docId = document.reference.id;
 
@@ -508,7 +583,7 @@ class _MainPageState extends State<MyHomePage> {
 
                           return Container(
                             color: (_index % 2 == 0)
-                                ? Colors.blueGrey[300]
+                                ? Colors.blueGrey[100]
                                 : Colors.blueGrey[200],
                             child: Stack(
                               children: [
@@ -532,68 +607,66 @@ class _MainPageState extends State<MyHomePage> {
                                 ),
                                 !_sharedPage || currentUid == data['user']
                                     ? Positioned(
-                                  top: -5,
-                                  right: -5,
-                                  child: PopupMenuButton(
-                                    icon: const Icon(
-                                        Icons.more_vert_outlined),
-                                    //don't specify icon if you want 3 dot menu
-                                    color: Colors.blueGrey,
-                                    itemBuilder: (context) =>
-                                    [
-                                      PopupMenuItem<int>(
-                                        value: 0,
-                                        child: Text(
-                                          data['shared']
-                                              ? 'Shared'
-                                              : 'Share...',
-                                          style: const TextStyle(
-                                              color: Colors.white),
+                                        top: -5,
+                                        right: -5,
+                                        child: PopupMenuButton(
+                                          icon: const Icon(
+                                              Icons.more_vert_outlined),
+                                          //don't specify icon if you want 3 dot menu
+                                          color: Colors.blueGrey,
+                                          itemBuilder: (context) => [
+                                            PopupMenuItem<int>(
+                                              value: 0,
+                                              child: Text(
+                                                data['shared']
+                                                    ? 'Shared'
+                                                    : 'Share...',
+                                                style: const TextStyle(
+                                                    color: Colors.white),
+                                              ),
+                                            ),
+                                            const PopupMenuItem<int>(
+                                              value: 1,
+                                              child: Text(
+                                                "Rename",
+                                                style: TextStyle(
+                                                    color: Colors.white),
+                                              ),
+                                            ),
+                                            const PopupMenuItem<int>(
+                                              value: 2,
+                                              child: Text(
+                                                "Delete",
+                                                style: TextStyle(
+                                                    color: Colors.white),
+                                              ),
+                                            ),
+                                          ],
+                                          onSelected: (item) => {
+                                            _imageSelectedItem(
+                                                context, item, docId, data)
+                                          },
                                         ),
-                                      ),
-                                      const PopupMenuItem<int>(
-                                        value: 1,
-                                        child: Text(
-                                          "Rename",
-                                          style: TextStyle(
-                                              color: Colors.white),
-                                        ),
-                                      ),
-                                      const PopupMenuItem<int>(
-                                        value: 2,
-                                        child: Text(
-                                          "Delete",
-                                          style: TextStyle(
-                                              color: Colors.white),
-                                        ),
-                                      ),
-                                    ],
-                                    onSelected: (item) =>
-                                    {
-                                      _imageSelectedItem(
-                                          context, item, docId, data)
-                                    },
-                                  ),
-                                )
+                                      )
                                     : Container(),
                                 !_sharedPage || currentUid == data['user']
                                     ? Positioned(
-                                  bottom: -5,
-                                  right: -5,
-                                  child: IconButton(
-                                    tooltip: 'Favourite',
-                                    icon: data['favorited']
-                                        ? const Icon(Icons.favorite)
-                                        : const Icon(
-                                        Icons.favorite_border),
-                                    onPressed: () async {
-                                      if (!_isLocked) {
-                                        favouriteImage(
-                                            docId, data['favorited']);
-                                      }
-                                    },
-                                  ),
-                                )
+                                        bottom: -5,
+                                        right: -5,
+                                        child: IconButton(
+                                          tooltip: 'Favourite',
+                                          icon: data['favorited']
+                                              ? const Icon(Icons.favorite)
+                                              : const Icon(
+                                                  Icons.favorite_border),
+                                          onPressed: () async {
+                                            if (!_isLocked) {
+                                              favouriteImage(
+                                                  docId, data['favorited']);
+                                            }
+                                          },
+                                        ),
+                                      )
                                     : Container(),
                               ],
                             ),
@@ -627,10 +700,7 @@ class _MainPageState extends State<MyHomePage> {
           shape: const CircularNotchedRectangle(),
           color: Colors.blueGrey[900],
           child: IconTheme(
-            data: IconThemeData(color: Theme
-                .of(context)
-                .colorScheme
-                .onPrimary),
+            data: IconThemeData(color: Theme.of(context).colorScheme.onPrimary),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: <Widget>[
@@ -720,6 +790,12 @@ class _SettingsPage extends State<SettingsPage> {
     });
   }
 
+  void _onFavSwitchChanged(bool value) {
+    setState(() {
+      widget.settingValues.setFavSwitch(value);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -755,6 +831,11 @@ class _SettingsPage extends State<SettingsPage> {
               value: widget.settingValues._ascDesc,
               onChanged: _onAscDescChanged,
             ),
+            SwitchListTile(
+              title: const Text('Only Show Favourites:'),
+              value: widget.settingValues._favSwitch,
+              onChanged: _onFavSwitchChanged,
+            ),
           ],
         ),
       ),
@@ -763,10 +844,11 @@ class _SettingsPage extends State<SettingsPage> {
 }
 
 class SettingValues {
-  SettingValues(this._orderSwitch, this._ascDesc);
+  SettingValues(this._orderSwitch, this._ascDesc, this._favSwitch);
 
   bool _orderSwitch;
   bool _ascDesc;
+  bool _favSwitch;
 
   setOrderSwitch(bool orderSwitch) {
     _orderSwitch = orderSwitch;
@@ -774,5 +856,9 @@ class SettingValues {
 
   setAscDesc(bool ascDesc) {
     _ascDesc = ascDesc;
+  }
+
+  setFavSwitch(bool favSwitch) {
+    _favSwitch = favSwitch;
   }
 }

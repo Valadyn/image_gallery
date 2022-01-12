@@ -6,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
-import 'package:intl/intl.dart';
 
 class AddImagePage extends StatefulWidget {
   const AddImagePage({Key? key, required this.title}) : super(key: key);
@@ -67,8 +66,7 @@ class _AddImagePageState extends State<AddImagePage> {
   Future<void> addImage(name) async {
     name = name.toLowerCase();
     DateTime now = DateTime.now();
-    String formattedDate = DateFormat('ss:mm:kk dd-MM-yyyy').format(now);
-    String tempName = name + ' ' + formattedDate;
+    String tempName = name + ' ' + now.toString();
 
     await uploadImage(tempName);
     String imageURL = await downloadImageURL(tempName);
@@ -87,7 +85,7 @@ class _AddImagePageState extends State<AddImagePage> {
           'imageName': tempName,
           'imageURL': imageURL,
           'user': currentUser,
-          'dateUploaded': formattedDate,
+          'dateUploaded': now,
           'favorited': favorited,
           'shared': shared,
           'size': _fileSize,

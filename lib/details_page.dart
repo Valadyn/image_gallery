@@ -12,6 +12,10 @@ class DetailScreenPage extends StatefulWidget {
 }
 
 class _DetailScreenPage extends State<DetailScreenPage> {
+  final GlobalKey<OverlayState> _overlayKey = GlobalKey<OverlayState>();
+
+  bool _overlayOn = false;
+
   _favoritedCheck() {
     if (widget.imageData['favorited']) {
       return 'Yes';
@@ -28,6 +32,46 @@ class _DetailScreenPage extends State<DetailScreenPage> {
     }
   }
 
+  late OverlayState? _overlayState;
+  late OverlayEntry _overlayEntry;
+
+  _showOverlay() {
+    _overlayState = _overlayKey.currentState;
+    _overlayEntry = OverlayEntry(builder: (context) {
+      return Stack(
+        children: [
+          Opacity(
+            opacity: 0.85,
+            child: Container(
+              color: Colors.grey[900],
+            ),
+          ),
+          Container(
+            constraints: const BoxConstraints.expand(),
+            child: InteractiveViewer(
+              boundaryMargin: const EdgeInsets.all(50.0),
+              constrained: true,
+              child: Image.network(
+                widget.imageData['imageURL'],
+              ),
+            ),
+          ),
+        ],
+      );
+    });
+    _overlayState?.insert(_overlayEntry);
+    _overlayOn = true;
+  }
+
+  _backButton() {
+    if (_overlayOn) {
+      _overlayEntry.remove();
+      _overlayOn = false;
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -38,102 +82,119 @@ class _DetailScreenPage extends State<DetailScreenPage> {
             icon: const Icon(Icons.arrow_back),
             tooltip: 'Back',
             onPressed: () {
-              Navigator.pop(context);
+              _backButton();
             },
           ),
           title: Text((widget.imageData['name'] as String).capitalize()),
         ),
-        body: Column(
+        body: Stack(
           children: [
-            Container(
-              color: Colors.black,
-              child: InteractiveViewer(
-                boundaryMargin: const EdgeInsets.symmetric(vertical: 50.0),
-                constrained: true,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 50.0),
-                  child: Image.network(
-                    widget.imageData['imageURL'],
+            ListView(
+              children: [
+                SizedBox(
+                  height: 400,
+                  child: Container(
+                    constraints: const BoxConstraints.expand(),
+                    child: GestureDetector(
+                      onTap: () {
+                        /*
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            PictureScreenPage(imageData: widget.imageData),
+                      ),
+                    );
+                     */
+                        _showOverlay();
+                      },
+                      child: Image.network(
+                        widget.imageData['imageURL'],
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Container(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Uploaded by: ' + widget.imageData['user'],
+                        style: const TextStyle(
+                          fontSize: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Container(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Uploaded at: ' +
+                            widget.imageData['dateUploaded']
+                                .toDate()
+                                .toString(),
+                        style: const TextStyle(
+                          fontSize: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Container(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'File Size: ' +
+                            (widget.imageData['size'] / 1000).toString() +
+                            ' KB',
+                        style: const TextStyle(
+                          fontSize: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Container(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Favorited: ' + _favoritedCheck(),
+                        style: const TextStyle(
+                          fontSize: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Container(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Shared: ' + _sharedCheck(),
+                        style: const TextStyle(
+                          fontSize: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            Expanded(
-              child: ListView(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(5),
-                    child: Container(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Uploaded by: ' + widget.imageData['user'],
-                          style: const TextStyle(
-                            fontSize: 17,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(5),
-                    child: Container(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Uploaded at: ' + widget.imageData['dateUploaded'],
-                          style: const TextStyle(
-                            fontSize: 17,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(5),
-                    child: Container(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'File Size: ' +
-                              (widget.imageData['size'] / 1000).toString() +
-                              ' KB',
-                          style: const TextStyle(
-                            fontSize: 17,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(5),
-                    child: Container(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Favorited: ' + _favoritedCheck(),
-                          style: const TextStyle(
-                            fontSize: 17,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(5),
-                    child: Container(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Shared: ' + _sharedCheck(),
-                          style: const TextStyle(
-                            fontSize: 17,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+            Container(
+              child: Overlay(
+                key: _overlayKey,
               ),
             ),
           ],
